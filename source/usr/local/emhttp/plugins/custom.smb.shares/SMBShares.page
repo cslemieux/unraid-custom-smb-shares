@@ -1,0 +1,214 @@
+Menu="Tasks:85"
+Title="SMB Shares"
+Tag="share-alt"
+Icon="share-alt"
+Code="f1e0"
+Type="xmenu"
+Tabs="false"
+---
+<?php
+require_once '/usr/local/emhttp/plugins/custom.smb.shares/include/lib.php';
+
+$shares = loadShares();
+$version = file_exists('/usr/local/emhttp/plugins/custom.smb.shares/VERSION') 
+    ? trim(file_get_contents('/usr/local/emhttp/plugins/custom.smb.shares/VERSION'))
+    : 'unknown';
+
+// Check plugin enabled status
+$pluginEnabled = isPluginEnabled();
+
+// Check Samba status (chroot-aware)
+$sambaStatus = getSambaStatus();
+$sambaRunning = $sambaStatus['running'];
+?>
+
+<link rel="stylesheet" href="/plugins/custom.smb.shares/css/feedback.css">
+<script src="/plugins/custom.smb.shares/js/feedback.js"></script>
+
+<style>
+.custom-shares-table { table-layout: fixed; }
+.custom-shares-table th:nth-child(1) { width: 140px; }  /* Share Name */
+.custom-shares-table th:nth-child(4) { width: 80px; }   /* Export */
+.custom-shares-table th:nth-child(5) { width: 80px; }   /* Security */
+.custom-shares-table th:nth-child(6) { width: 120px; text-align: right; }  /* Actions */
+.custom-shares-table td:last-child { text-align: right; }
+.disabled-banner { background: #f0ad4e; color: #000; padding: 10px 15px; margin-bottom: 15px; border-radius: 4px; }
+.disabled-banner a { color: #000; text-decoration: underline; }
+</style>
+
+<?php if (!$pluginEnabled): ?>
+<div class="disabled-banner">
+    <i class="fa fa-exclamation-triangle"></i>
+    _(Plugin is disabled. Custom SMB shares are not being applied.)_
+    <a href="/SMBSharesSettings">_(Enable in Settings)_</a>
+</div>
+<?php endif; ?>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <h2 style="margin:0;">_(SMB Shares)_ <span style="font-size:0.6em;color:#999;">v<?=$version?></span></h2>
+    <div style="display:flex;align-items:center;gap:15px;">
+        <span id="samba-status">
+            <?php if ($sambaRunning): ?>
+                <i class="fa fa-check green-text"></i> _(Samba is running)_
+            <?php else: ?>
+                <i class="fa fa-times red-text"></i> _(Samba is not running)_
+            <?php endif; ?>
+        </span>
+        <input type="button" value="_(Reload Samba)_" onclick="reloadSamba()" id="reloadBtn">
+        <input type="button" value="_(Import Config)_" onclick="importConfig()">
+        <input type="button" value="_(Export Config)_" onclick="exportConfig()">
+        <input type="button" value="_(Settings)_" onclick="location.href='/SMBSharesSettings'">
+    </div>
+</div>
+
+<div class="TableContainer--no-min-width">
+<table class="tablesorter shift custom-shares-table">
+<thead>
+<tr>
+    <th>_(Share Name)_</th>
+    <th>_(Path)_</th>
+    <th>_(Comment)_</th>
+    <th>_(Export)_</th>
+    <th>_(Security)_</th>
+    <th>_(Actions)_</th>
+</tr>
+</thead>
+<tbody>
+<?php if (empty($shares)): ?>
+<tr>
+    <td colspan="6" style="text-align:center;padding:20px;">
+        <em>_(No custom shares configured)_</em>
+    </td>
+</tr>
+<?php else: ?>
+<?php foreach ($shares as $index => $share): 
+    $export = $share['export'] ?? ($share['browseable'] === 'yes' ? 'e' : '-');
+    $exportLabels = [
+        'e' => _('Yes'),
+        'eh' => _('Hidden'),
+        'et' => _('Time Machine'),
+        'eth' => _('TM Hidden'),
+        '-' => _('No')
+    ];
+    $exportLabel = $exportLabels[$export] ?? _('Yes');
+    
+    $security = $share['security'] ?? 'public';
+    $securityLabels = [
+        'public' => _('Public'),
+        'secure' => _('Secure'),
+        'private' => _('Private')
+    ];
+    $securityLabel = $securityLabels[$security] ?? _('Public');
+?>
+<tr>
+    <td>
+        <span class="exec" style="margin-right:8px;"><i class="fa fa-folder orange-text"></i></span>
+        <span class="exec"><?= htmlspecialchars($share['name']) ?></span>
+    </td>
+    <td><?= htmlspecialchars($share['path']) ?></td>
+    <td><?= htmlspecialchars($share['comment'] ?? '') ?></td>
+    <td>
+        <?php if ($export !== '-'): ?>
+            <i class="fa fa-check green-text"></i> <?= $exportLabel ?>
+        <?php else: ?>
+            <i class="fa fa-times grey-text"></i> _(No)_
+        <?php endif; ?>
+    </td>
+    <td><?= $securityLabel ?></td>
+    <td>
+        <a href="/SMBSharesUpdate?name=<?= urlencode($share['name']) ?>"><i class="fa fa-edit"></i> _(Edit)_</a>
+        <span style="margin:0 5px;">|</span>
+        <a href="#" onclick="deleteShare('<?= htmlspecialchars($share['name']) ?>'); return false;"><i class="fa fa-trash"></i> _(Delete)_</a>
+    </td>
+</tr>
+<?php endforeach; ?>
+<?php endif; ?>
+</tbody>
+</table>
+</div>
+
+<div style="display:flex;justify-content:flex-end;margin-top:12px;">
+    <input type="button" value="_(Add Share)_" onclick="location.href='/SMBSharesAdd'">
+</div>
+
+<script>
+function deleteShare(shareName) {
+    swal({
+        title: "_(Confirm Delete)_",
+        text: "_(Are you sure you want to delete)_ \"" + shareName + "\"?",
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: "_(Delete)_",
+        cancelButtonText: "_(Cancel)_"
+    }, function(confirmed) {
+        if (confirmed) {
+            $.post('/plugins/custom.smb.shares/delete.php', { name: shareName }, function(response) {
+                if (response.success) {
+                    showSuccess(response.message);
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    showError(response.error);
+                }
+            }, 'json').fail(function(xhr, status, error) {
+                showError("_(Error deleting share)_: " + error);
+            });
+        }
+    });
+}
+
+function reloadSamba() {
+    $('#reloadBtn').prop('disabled', true).val('_(Reloading...)_');
+    $.post('/plugins/custom.smb.shares/api.php', { action: 'reloadSamba' }, function(response) {
+        if (response.success) {
+            showSuccess("_(Samba reloaded successfully)_");
+        } else {
+            showError(response.error || "_(Failed to reload Samba)_");
+        }
+        $('#reloadBtn').prop('disabled', false).val('_(Reload Samba)_');
+    }, 'json').fail(function() {
+        showError("_(Failed to reload Samba)_");
+        $('#reloadBtn').prop('disabled', false).val('_(Reload Samba)_');
+    });
+}
+
+function importConfig() {
+    swal({
+        title: "_(Import Configuration)_",
+        text: "_(Paste your JSON configuration below)_:",
+        type: 'input',
+        showCancelButton: true,
+        confirmButtonText: "_(Import)_",
+        cancelButtonText: "_(Cancel)_",
+        inputPlaceholder: "_(JSON configuration)_"
+    }, function(input) {
+        if (input === false) return;
+        if (!input) {
+            swal.showInputError("_(Please enter a configuration)_");
+            return false;
+        }
+        $.post('/plugins/custom.smb.shares/api.php', { action: 'import', config: input }, function(response) {
+            if (response.success) {
+                showSuccess("_(Configuration imported successfully)_");
+                setTimeout(function() { location.reload(); }, 1000);
+            } else {
+                showError(response.error || "_(Import failed)_");
+            }
+        }, 'json');
+    });
+}
+
+function exportConfig() {
+    $.get('/plugins/custom.smb.shares/api.php?action=export', function(response) {
+        if (response.success) {
+            swal({
+                title: "_(Export Configuration)_",
+                text: "<textarea readonly style='width:100%;height:200px;'>" + JSON.stringify(response.config, null, 2) + "</textarea>",
+                html: true,
+                confirmButtonText: "_(Close)_"
+            });
+        } else {
+            showError(response.error || "_(Export failed)_");
+        }
+    }, 'json');
+}
+</script>

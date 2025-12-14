@@ -1,0 +1,95 @@
+/**
+ * User/Group Browser Styles
+ */
+
+.user-browser {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--background-color);
+    max-height: 300px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.user-browser-search {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-browser-search input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--background-color);
+    color: var(--text-color);
+}
+
+.user-browser-lists {
+    display: flex;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.user-list, .group-list {
+    flex: 1;
+    padding: 10px;
+}
+
+.user-list {
+    border-right: 1px solid var(--border-color);
+}
+
+.user-list h4, .group-list h4 {
+    margin: 0 0 10px 0;
+    color: var(--text-color);
+    font-size: 0.9em;
+    text-transform: uppercase;
+}
+
+.user-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.user-item:hover {
+    background: var(--shade-bg-color);
+}
+
+.user-item.selected {
+    background: var(--blue-800);
+    color: white;
+}
+
+.user-item input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.user-item span {
+    flex: 1;
+    font-size: 0.9em;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .user-browser-lists {
+        flex-direction: column;
+    }
+
+    .user-list {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+}

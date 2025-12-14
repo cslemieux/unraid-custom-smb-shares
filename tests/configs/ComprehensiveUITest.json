@@ -1,0 +1,22 @@
+{
+  "testName": "ComprehensiveUITest",
+  "harness": {
+    "port": 8888,
+    "createTestDirs": [
+      "test1", "test2", "test3",
+      "EditTest", "DeleteTest",
+      "handlertest",
+      "multi1", "multi2", "multi3",
+      "editdelete",
+      "workflowtest", "editworkflow", "deleteworkflow",
+      "duplicate"
+    ]
+  },
+  "dependencies": {
+    "scan": true,
+    "scanPaths": [
+      "source/usr/local/emhttp/plugins/custom.smb.shares/CustomSMBShares.page",
+      "source/usr/local/emhttp/plugins/custom.smb.shares/Edit.page"
+    ]
+  }
+}

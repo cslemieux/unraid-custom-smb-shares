@@ -1,0 +1,217 @@
+Title="Edit Share"
+---
+<?php
+require_once '/usr/local/emhttp/plugins/custom.smb.shares/include/lib.php';
+
+$index = $_GET['index'] ?? -1;
+$shares = loadShares();
+$share = $shares[$index] ?? [];
+$isNew = empty($share);
+$security = $share['security'] ?? 'public';
+$showUserAccess = in_array($security, ['secure', 'private']);
+?>
+
+<link rel="stylesheet" href="/plugins/custom.smb.shares/css/validation.css">
+<link rel="stylesheet" href="/plugins/custom.smb.shares/css/feedback.css">
+<link rel="stylesheet" href="/plugins/custom.smb.shares/css/permissions.css">
+<link rel="stylesheet" href="/plugins/custom.smb.shares/css/user-browser.css">
+<link rel="stylesheet" href="/plugins/custom.smb.shares/css/permission-manager.css">
+
+<script src="/plugins/custom.smb.shares/js/feedback.js"></script>
+
+<form markdown="1" method="POST" action="/plugins/custom.smb.shares/<?=$isNew ? 'add' : 'update'?>.php" onsubmit="return prepareForm(this)">
+<input type="hidden" name="csrf_token" value="<?=$var['csrf_token']?>">
+<input type="hidden" name="index" value="<?=$index?>">
+<input type="hidden" name="original_name" value="<?=htmlspecialchars($share['name'] ?? '')?>">
+<input type="hidden" name="user_access" value="<?=htmlspecialchars($share['user_access'] ?? '{}')?>">
+
+_(Share Name)_:
+: <input type="text" name="name" value="<?=htmlspecialchars($share['name'] ?? '')?>" maxlength="40" required <?=$isNew ? '' : 'readonly'?>>
+
+> _(The share name is how this share will appear to network clients. Must be unique and can contain letters, numbers, underscores, and dashes.)_
+
+_(Path)_:
+: <input type="text" name="path" value="<?=htmlspecialchars($share['path'] ?? '')?>" required placeholder="/mnt/user/..." pattern="/mnt/.*">
+
+> _(The local filesystem path to share. Must start with /mnt/ and point to an existing directory.)_
+
+_(Comment)_:
+: <input type="text" name="comment" value="<?=htmlspecialchars($share['comment'] ?? '')?>">
+
+> _(Optional description that appears in network browser listings.)_
+
+_(Export)_:
+: <select name="export" onchange="toggleTimeMachineOptions(this)">
+<?=mk_option($share['export'] ?? 'e', 'e', _('Yes'))?>
+<?=mk_option($share['export'] ?? 'e', 'eh', _('Yes (hidden)'))?>
+<?=mk_option($share['export'] ?? 'e', 'et', _('Yes (Time Machine)'))?>
+<?=mk_option($share['export'] ?? 'e', 'eth', _('Yes (Time Machine, hidden)'))?>
+<?=mk_option($share['export'] ?? 'e', '-', _('No'))?>
+</select>
+
+> _(Controls share visibility and type.)_
+>
+> * **Yes** - Share is visible and accessible
+> * **Yes (hidden)** - Share is accessible but not shown in network browser
+> * **Yes (Time Machine)** - Configured as a macOS Time Machine backup target
+> * **No** - Share is disabled
+
+<div markdown="1" id="tm-options" style="display:<?=in_array($share['export'] ?? '', ['et', 'eth']) ? 'block' : 'none'?>">
+_(Time Machine volume size limit)_:
+: <input type="text" name="volsizelimit" value="<?=htmlspecialchars($share['volsizelimit'] ?? '')?>" placeholder="_(e.g. 500000)_"> MB
+
+> _(Maximum size in MB for Time Machine backups. Leave empty for unlimited.)_
+</div>
+
+_(Case-sensitive names)_:
+: <select name="case_sensitive">
+<?=mk_option($share['case_sensitive'] ?? 'auto', 'auto', _('Auto'))?>
+<?=mk_option($share['case_sensitive'] ?? 'auto', 'yes', _('Yes'))?>
+<?=mk_option($share['case_sensitive'] ?? 'auto', 'forced', _('Force lower'))?>
+</select>
+
+> _(Controls filename case sensitivity.)_
+>
+> * **Auto** - Preserve case but match case-insensitively (recommended)
+> * **Yes** - Fully case-sensitive (Linux-style)
+> * **Force lower** - Convert all filenames to lowercase
+
+_(Security)_:
+: <select name="security" onchange="toggleSecurityMode(this)">
+<?=mk_option($share['security'] ?? 'public', 'public', _('Public'))?>
+<?=mk_option($share['security'] ?? 'public', 'secure', _('Secure'))?>
+<?=mk_option($share['security'] ?? 'public', 'private', _('Private'))?>
+</select>
+
+> _(Access control mode for this share.)_
+>
+> * **Public** - Anyone can read and write (guest access enabled)
+> * **Secure** - Guests can read, authenticated users have configurable access
+> * **Private** - Only authenticated users can access (no guest access)
+
+<div markdown="1" id="user-access-section" style="display:<?=$showUserAccess ? 'block' : 'none'?>">
+_(SMB User Access)_:
+: <div id="userAccessList" class="user-access-list">
+    <p><em>_(Loading users...)_</em></p>
+  </div>
+
+> _(Set per-user access levels. Select the access level for each user.)_
+>
+> * **No Access** - User cannot access this share
+> * **Read-only** - User can read but not modify files
+> * **Read/Write** - User has full access to read and write files
+</div>
+
+&nbsp;
+: <input type="submit" value="<?=$isNew ? _('Add Share') : _('Apply')?>" onclick="this.value='<?=$isNew ? 'Add' : 'Apply'?>'">
+  <input type="button" value="_(Done)_" onclick="done()">
+
+</form>
+
+<script>
+function done() {
+    location.href = '/SMBShares';
+}
+
+function toggleTimeMachineOptions(select) {
+    var val = $(select).val();
+    var show = (val === 'et' || val === 'eth');
+    $('#tm-options').toggle(show);
+}
+
+function toggleSecurityMode(select) {
+    var mode = $(select).val();
+    var showUserAccess = (mode === 'secure' || mode === 'private');
+    $('#user-access-section').toggle(showUserAccess);
+    if (showUserAccess) {
+        populateUserAccess(mode);
+    }
+}
+
+function populateUserAccess(mode) {
+    var $container = $('#userAccessList');
+    var currentAccess = {};
+    
+    try {
+        currentAccess = JSON.parse($('input[name="user_access"]').val() || '{}');
+    } catch (e) {
+        currentAccess = {};
+    }
+    
+    $container.html('<p><em><?=_("Loading users...")?></em></p>');
+    
+    $.get('/plugins/custom.smb.shares/get-users.php')
+        .done(function(response) {
+            if (!response.success || !response.users) {
+                $container.html('<p class="error"><?=_("Failed to load users")?></p>');
+                return;
+            }
+            
+            if (response.users.length === 0) {
+                $container.html('<p><em><?=_("No users found on system")?></em></p>');
+                return;
+            }
+            
+            var defaultAccess = (mode === 'secure') ? 'read-only' : 'no-access';
+            var html = '<table class="user-access-table"><tbody>';
+            response.users.forEach(function(user) {
+                var access = currentAccess[user.name] || defaultAccess;
+                html += '<tr>';
+                html += '<td><strong>' + user.name + '</strong></td>';
+                html += '<td><select name="access_' + user.name + '" data-user="' + user.name + '" onchange="updateUserAccess(this)">';
+                html += '<option value="no-access"' + (access === 'no-access' ? ' selected' : '') + '><?=_("No Access")?></option>';
+                html += '<option value="read-only"' + (access === 'read-only' ? ' selected' : '') + '><?=_("Read-only")?></option>';
+                html += '<option value="read-write"' + (access === 'read-write' ? ' selected' : '') + '><?=_("Read/Write")?></option>';
+                html += '</select></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            
+            $container.html(html);
+        })
+        .fail(function() {
+            $container.html('<p class="error"><?=_("Failed to load users")?></p>');
+        });
+}
+
+function updateUserAccess(select) {
+    var $select = $(select);
+    var $hidden = $('input[name="user_access"]');
+    var access = {};
+    
+    try {
+        access = JSON.parse($hidden.val() || '{}');
+    } catch (e) {
+        access = {};
+    }
+    
+    access[$select.data('user')] = $select.val();
+    $hidden.val(JSON.stringify(access));
+}
+
+function prepareForm(form) {
+    // Validation
+    var name = form.name.value.trim();
+    var path = form.path.value.trim();
+    
+    if (!name) {
+        swal({title: "<?=_('Error')?>", text: "<?=_('Share name is required')?>", type: 'error'});
+        return false;
+    }
+    
+    if (!path || !path.startsWith('/mnt/')) {
+        swal({title: "<?=_('Error')?>", text: "<?=_('Path must start with /mnt/')?>", type: 'error'});
+        return false;
+    }
+    
+    return true;
+}
+
+// Initialize on page load
+$(function() {
+    var security = $('select[name="security"]').val();
+    if (security === 'secure' || security === 'private') {
+        populateUserAccess(security);
+    }
+});
+</script>

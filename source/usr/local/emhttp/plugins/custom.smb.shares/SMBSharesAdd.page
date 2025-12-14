@@ -1,0 +1,9 @@
+Title="Add Share"
+Tag="plus"
+Markdown="false"
+Eval="true"
+---
+<?
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+eval('?>'.parse_file("$docroot/plugins/custom.smb.shares/include/ShareForm.php"));
+?>

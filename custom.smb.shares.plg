@@ -1,0 +1,139 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY name      "custom.smb.shares">
+<!ENTITY author    "cslemieux">
+<!ENTITY version   "2025.01.18">
+<!ENTITY launch    "Settings/CustomSMBShares">
+<!ENTITY gitURL    "https://raw.githubusercontent.com/YOUR_USERNAME/custom-smb-shares-plugin/main">
+<!ENTITY pluginURL "&gitURL;/custom.smb.shares.plg">
+<!ENTITY md5       "dc190a9d4f2209c8f6ecfffdbb16dd6e">
+<!ENTITY plugdir   "/usr/local/emhttp/plugins/&name;">
+<!ENTITY plgPATH   "/boot/config/plugins/&name;">
+]>
+
+<PLUGIN name="&name;" 
+        author="&author;" 
+        version="&version;" 
+        launch="&launch;" 
+        pluginURL="&pluginURL;"
+        min="6.12.0"
+        support="https://forums.unraid.net/topic/xxxxx"
+        icon="share">
+
+<CHANGES>
+##&name;
+
+###2025.01.18
+- Initial release
+- Add custom SMB shares with validation
+- Client-side and server-side validation
+- AJAX form submission with feedback
+- Automated test suite (101 tests, 100% passing)
+- HTML5 validation patterns
+- Modal-based UI with tabbed interface
+- Path browser with file tree
+- Automatic Samba configuration and reload
+- Service status display with auto-refresh (30s)
+- User/group browser with search
+- Quick presets (Basic, Read-Only, Secure, macOS, Time Machine)
+- Import/Export configuration (JSON)
+- Loading spinners and improved UI feedback
+- Delete confirmation dialogs
+- Comprehensive error handling
+</CHANGES>
+
+<!-- Download plugin package -->
+<FILE Name="&plgPATH;/&name;-&version;.txz">
+<URL>&gitURL;/archive/&name;-&version;.txz</URL>
+<MD5>&md5;</MD5>
+</FILE>
+
+<!-- Download MD5 checksum -->
+<FILE Name="&plgPATH;/&name;-&version;.md5">
+<URL>&gitURL;/archive/&name;-&version;.md5</URL>
+</FILE>
+
+<!-- Install script -->
+<FILE Run="/bin/bash" Method="install">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+
+# Verify unRAID version
+source /etc/unraid-version
+if [[ ${version:0:4} < "6.12" ]]; then
+  echo "ERROR: Unraid 6.12 or higher required"
+  exit 1
+fi
+
+# Verify MD5 checksum
+sum1=$(/usr/bin/md5sum &plgPATH;/&name;-&version;.txz | awk '{print $1}')
+sum2=$(/usr/bin/cat &plgPATH;/&name;-&version;.md5)
+if [ "${sum1}" != "${sum2}" ]; then
+  echo "ERROR: MD5 checksum mismatch"
+  echo "Expected: ${sum2}"
+  echo "Got: ${sum1}"
+  rm -f &plgPATH;/&name;-&version;.txz &plgPATH;/&name;-&version;.md5
+  exit 1
+fi
+
+# Install package
+echo "Installing &name; v&version;..."
+upgradepkg --install-new &plgPATH;/&name;-&version;.txz
+
+# Create config directory
+mkdir -p &plgPATH;
+
+# Initialize shares.json if it doesn't exist
+if [ ! -f "&plgPATH;/shares.json" ]; then
+  echo "[]" > &plgPATH;/shares.json
+fi
+
+# Set permissions
+chmod 644 &plgPATH;/shares.json
+chmod 755 &plugdir;/scripts/*.sh 2>/dev/null || true
+
+# Cleanup old versions
+find &plgPATH;/ -type f -iname "&name;*.txz" ! -iname "*&version;*" -delete
+find &plgPATH;/ -type f -iname "&name;*.md5" ! -iname "*&version;*" -delete
+
+echo ""
+echo "-----------------------------------------------------------"
+echo " &name; has been installed."
+echo " Version: &version;"
+echo " Access via: Settings > Custom SMB Shares"
+echo "-----------------------------------------------------------"
+echo ""
+]]>
+</INLINE>
+</FILE>
+
+<!-- Remove script -->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+
+echo "Removing &name;..."
+
+# Remove plugin files
+removepkg &name;-&version; 2>/dev/null || true
+rm -rf &plugdir;
+
+# Note: Configuration files in &plgPATH; are preserved
+# To completely remove including config:
+# rm -rf &plgPATH;
+
+echo ""
+echo "-----------------------------------------------------------"
+echo " &name; has been removed."
+echo " Configuration files preserved in &plgPATH;"
+echo " To remove config: rm -rf &plgPATH;"
+echo "-----------------------------------------------------------"
+echo ""
+]]>
+</INLINE>
+</FILE>
+
+</PLUGIN>

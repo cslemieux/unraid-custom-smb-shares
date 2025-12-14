@@ -1,0 +1,9 @@
+Menu="NetworkServices"
+Title="SMB Shares"
+Icon="share-alt"
+---
+<?php
+// Redirect to the top-level SMB Shares page
+header('Location: /SMBShares');
+exit;
+?>

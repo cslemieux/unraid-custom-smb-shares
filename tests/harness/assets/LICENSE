@@ -1,0 +1,26 @@
+# License Information for Test Harness Assets
+
+## jquery.filetree.js and jquery.filetree.css
+
+These files are used ONLY for testing purposes and are NOT distributed
+with the Custom SMB Shares plugin.
+
+### Original Work
+- **Name**: jQuery File Tree
+- **Authors**: Cory S.N. LaViska & Dave Rogers
+- **Copyright**: 2008 A Beautiful Site, LLC
+- **Original License**: MIT License
+- **Source**: https://www.abeautifulsite.net/posts/jquery-file-tree/
+
+### Modifications
+- **Modified by**: Bergware for Unraid
+- **Source**: Unraid WebGUI (https://github.com/unraid/webgui)
+- **License**: GPL-3.0 (as part of Unraid WebGUI)
+
+### Usage in This Project
+These files are included solely for test harness functionality to simulate
+the Unraid environment during automated testing. They are not compiled into
+or distributed with the plugin package (.txz).
+
+Per GPL-3.0 terms, the source code is available in this repository and
+at the Unraid WebGUI repository linked above.

@@ -1,0 +1,22 @@
+{
+  "browser": true,
+  "jquery": true,
+  "esversion": 5,
+  "strict": false,
+  "undef": true,
+  "unused": false,
+  "laxbreak": true,
+  "globals": {
+    "Shadowbox": true,
+    "swal": true,
+    "csrf_token": true,
+    "showSuccess": true,
+    "showError": true,
+    "showNotification": true,
+    "setupValidation": true,
+    "initPermissionManager": true,
+    "toggleTimeMachineOptions": true,
+    "toggleSecurityMode": true,
+    "console": true
+  }
+}

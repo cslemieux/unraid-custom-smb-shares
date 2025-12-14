@@ -1,0 +1,71 @@
+{
+    "name": "custom-smb-shares/unraid-plugin",
+    "description": "Custom SMB Shares Manager for Unraid",
+    "type": "project",
+    "config": {
+        "process-timeout": 600
+    },
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "php-webdriver/webdriver": "^1.15",
+        "phpstan/phpstan": "^1.10",
+        "squizlabs/php_codesniffer": "^3.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "CustomSMBShares\\": "source/usr/local/emhttp/plugins/custom.smb.shares/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "validate:sources": "node scripts/validate-sources.js",
+        "test": "phpunit --colors=always",
+        "test:unit": "phpunit --colors=always --testsuite=Unit",
+        "test:integration": "phpunit --colors=always --testsuite=Integration",
+        "test:smoke": "phpunit --colors=always --testsuite=Harness",
+        "test:e2e": "bash scripts/run-e2e-tests.sh",
+        "test:e2e:individual": "bash scripts/run-e2e-tests.sh --individual",
+        "test:perf": "phpunit --colors=always --testdox tests/performance/PerformanceBenchmark.php",
+        "test:security": [
+            "phpunit --colors=always --testdox tests/security/SecurityPenetrationTest.php",
+            "phpunit --colors=always --testdox tests/security/SymlinkPathTraversalTest.php"
+        ],
+        "test:coverage": "phpunit --coverage-html coverage/ --coverage-text",
+        "lint": "phpcs --standard=PSR12 --warning-severity=0 source/",
+        "lint:fix": "phpcbf --standard=PSR12 source/",
+        "analyze": "phpstan analyse source/ --level=8 --no-progress",
+        "check:js": "node --check source/usr/local/emhttp/plugins/custom.smb.shares/js/*.js 2>&1 || true",
+        "check": [
+            "@validate:sources",
+            "@lint",
+            "@analyze",
+            "@test"
+        ],
+        "build": "bash build.sh",
+        "deploy": "bash deploy.sh"
+    },
+    "scripts-descriptions": {
+        "validate:sources": "Validate all source code syntax (PHP, JavaScript, HTML)",
+        "test": "Run all tests",
+        "test:unit": "Run unit tests only",
+        "test:integration": "Run integration tests only",
+        "test:smoke": "Run test harness verification tests",
+        "test:e2e": "Run E2E tests with managed ChromeDriver",
+        "test:e2e:individual": "Run E2E tests individually (workaround for cleanup issues)",
+        "test:coverage": "Generate test coverage report",
+        "lint": "Check code style (PSR-12)",
+        "lint:fix": "Fix code style issues automatically",
+        "analyze": "Run static analysis (PHPStan level 8)",
+        "check:js": "Validate JavaScript syntax",
+        "check": "Run all quality checks",
+        "build": "Build plugin package",
+        "deploy": "Deploy to test server"
+    }
+}

@@ -1,0 +1,29 @@
+#!/bin/bash
+# Git pre-commit hook - runs quality checks before commit
+set -e
+
+echo "Running pre-commit checks..."
+
+# Run linting
+echo "→ Checking code style..."
+if ! composer lint --quiet; then
+    echo "✗ Code style issues found. Run 'composer lint:fix' to fix."
+    exit 1
+fi
+
+# Run static analysis
+echo "→ Running static analysis..."
+if ! composer analyze --quiet; then
+    echo "✗ Static analysis failed. Fix errors before committing."
+    exit 1
+fi
+
+# Run unit tests
+echo "→ Running unit tests..."
+if ! composer test:unit --quiet; then
+    echo "✗ Unit tests failed. Fix tests before committing."
+    exit 1
+fi
+
+echo "✓ All pre-commit checks passed!"
+exit 0

@@ -1,0 +1,10 @@
+Title="Edit Share"
+Tag="edit"
+Markdown="false"
+Eval="true"
+---
+<?
+$docroot = $docroot ?? $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+$_GET['mode'] = 'edit';
+eval('?>'.parse_file("$docroot/plugins/custom.smb.shares/include/ShareForm.php"));
+?>

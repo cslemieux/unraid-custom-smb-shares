@@ -1,0 +1,85 @@
+Title="Settings"
+Tag="cog"
+---
+<?php
+$configFile = '/boot/config/plugins/custom.smb.shares/settings.cfg';
+$defaults = [
+    'SERVICE' => 'enabled',
+];
+
+// Load settings
+$settings = $defaults;
+if (file_exists($configFile)) {
+    $loaded = parse_ini_file($configFile);
+    if ($loaded) {
+        $settings = array_merge($defaults, $loaded);
+    }
+}
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $settings['SERVICE'] = $_POST['SERVICE'] ?? 'enabled';
+    
+    // Save settings
+    $content = "";
+    foreach ($settings as $key => $value) {
+        $content .= "$key=\"$value\"\n";
+    }
+    file_put_contents($configFile, $content);
+    
+    // If disabling, we don't need to do anything special
+    // If enabling, regenerate config
+    if ($settings['SERVICE'] === 'enabled') {
+        require_once '/usr/local/emhttp/plugins/custom.smb.shares/include/lib.php';
+        $shares = loadShares();
+        $config = generateSambaConfig($shares);
+        $pluginConf = '/boot/config/plugins/custom.smb.shares/smb-custom.conf';
+        file_put_contents($pluginConf, $config);
+        ensureSambaInclude();
+        reloadSamba();
+    }
+}
+
+$enabled = $settings['SERVICE'] === 'enabled';
+?>
+
+<script>
+function applySettings() {
+    $('#applyBtn').val('_(Applying...)_').prop('disabled', true);
+    $('form').submit();
+}
+</script>
+
+<form method="POST">
+
+<dl>
+    <dt>_(Enable SMB Shares)_:</dt>
+    <dd>
+        <select name="SERVICE">
+            <option value="enabled" <?=$enabled ? 'selected' : ''?>>_(Enabled)_</option>
+            <option value="disabled" <?=!$enabled ? 'selected' : ''?>>_(Disabled)_</option>
+        </select>
+    </dd>
+</dl>
+<blockquote class="inline_help">
+    <p>_(When disabled, the plugin will not inject any configuration into Samba. Your share definitions are preserved and will be restored when re-enabled.)_</p>
+</blockquote>
+
+<dl>
+    <dt>&nbsp;</dt>
+    <dd>
+        <span class="inline-flex flex-row items-center gap-2">
+            <input type="submit" id="applyBtn" value="_(Apply)_" onclick="applySettings()">
+            <input type="button" value="_(Done)_" onclick="location.href='/SMBShares'">
+        </span>
+    </dd>
+</dl>
+
+</form>
+
+<?php if (!$enabled): ?>
+<div class="notice" style="margin-top:20px;">
+    <i class="fa fa-exclamation-triangle orange-text"></i>
+    _(Plugin is currently disabled. Custom SMB shares are not being applied to Samba configuration.)_
+</div>
+<?php endif; ?>

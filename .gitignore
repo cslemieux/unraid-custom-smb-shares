@@ -1,0 +1,60 @@
+# Dependencies
+vendor/
+node_modules/
+
+# Build output
+build/
+packages/
+*.txz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+.phpunit.result.cache
+coverage/
+
+# Development files (not for public release)
+docs-mirror/
+archive/
+*.tar.gz
+dom-snapshots/
+scripts/dom-snapshots/
+
+# Local development scripts
+scripts/unraid-login.sh
+scripts/unraid-dom-fetch.sh
+scripts/unraid-api.sh
+scripts/unraid-analyze-dom.sh
+scripts/sync-unraid.sh
+scripts/dev-watch.sh
+scripts/fix-ssh-key.sh
+scripts/setup-ssh-key.sh
+scripts/test-api.sh
+scripts/test-credential-cleanup.sh
+scripts/test-interactive-login.exp
+scripts/test-prompts-simple.exp
+scripts/test-modal.js
+scripts/validate-modal.php
+scripts/automated-manual-tests.sh
+scripts/analyze-dom.sh
+
+# Test files with local references
+run-ui-tests.sh
+tests/ui/
+
+# Documentation with local references
+MANUAL-TESTING-CHECKLIST.md
+PERMISSIONS-COMPLETE.md
+QUICK-REFERENCE.md
+TESTING-COMPLETE.md
+docs/SSH-SETUP.md
+unraid-samba-research.md
+COMPREHENSIVE-TESTING-PLAN.md

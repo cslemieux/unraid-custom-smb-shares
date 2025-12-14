@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Validation Test</title>
+    <style>
+        .error { border-color: #ff6b6b !important; background-color: rgba(255, 107, 107, 0.1); }
+        .field-error { color: #ff6b6b; font-size: 12px; margin-top: 4px; display: none; }
+        input, select { display: block; margin: 5px 0; padding: 5px; width: 300px; }
+        button { margin: 10px 5px 10px 0; padding: 8px 16px; }
+    </style>
+    <script src="../source/usr/local/emhttp/plugins/custom.smb.shares/js/validation.js"></script>
+</head>
+<body>
+    <h2>Share Validation Test</h2>
+    
+    <form id="testForm" onsubmit="return validateBeforeSubmit(event)">
+        <label>Share Name:</label>
+        <input type="text" id="shareName" placeholder="test_share">
+        <div id="shareNameError" class="field-error"></div>
+        
+        <label>Path:</label>
+        <input type="text" id="sharePath" placeholder="/mnt/user/data">
+        <div id="sharePathError" class="field-error"></div>
+        
+        <label>Create Mask (optional):</label>
+        <input type="text" id="createMask" placeholder="0664" maxlength="4">
+        <div id="createMaskError" class="field-error"></div>
+        
+        <label>Directory Mask (optional):</label>
+        <input type="text" id="directoryMask" placeholder="0775" maxlength="4">
+        <div id="directoryMaskError" class="field-error"></div>
+        
+        <button type="submit">Submit</button>
+        <button type="button" onclick="testValidation()">Run Tests</button>
+    </form>
+    
+    <div id="results" style="margin-top: 20px; padding: 10px; background: #f0f0f0;"></div>
+    
+    <script>
+        setupValidation();
+        
+        function testValidation() {
+            const results = [];
+            
+            // Test 1: Valid share name
+            results.push('Test 1: ' + (validateShareName('test_share') === null ? 'PASS' : 'FAIL'));
+            
+            // Test 2: Invalid share name with spaces
+            results.push('Test 2: ' + (validateShareName('test share') !== null ? 'PASS' : 'FAIL'));
+            
+            // Test 3: Invalid share name with special chars
+            results.push('Test 3: ' + (validateShareName('test@share') !== null ? 'PASS' : 'FAIL'));
+            
+            // Test 4: Valid path
+            results.push('Test 4: ' + (validatePath('/mnt/user/data') === null ? 'PASS' : 'FAIL'));
+            
+            // Test 5: Invalid path
+            results.push('Test 5: ' + (validatePath('/home/data') !== null ? 'PASS' : 'FAIL'));
+            
+            // Test 6: Valid mask
+            results.push('Test 6: ' + (validateMask('0664', 'Test') === null ? 'PASS' : 'FAIL'));
+            
+            // Test 7: Invalid mask
+            results.push('Test 7: ' + (validateMask('999', 'Test') !== null ? 'PASS' : 'FAIL'));
+            
+            // Test 8: Empty mask (optional)
+            results.push('Test 8: ' + (validateMask('', 'Test') === null ? 'PASS' : 'FAIL'));
+            
+            document.getElementById('results').innerHTML = '<h3>Test Results:</h3>' + results.join('<br>');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Feedback Test</title>
+    <link rel="stylesheet" href="../source/usr/local/emhttp/plugins/custom.smb.shares/css/feedback.css">
+    <script src="../source/usr/local/emhttp/plugins/custom.smb.shares/js/feedback.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { margin: 10px 5px; padding: 10px 20px; cursor: pointer; }
+        .test-section { margin: 20px 0; padding: 20px; background: #f5f5f5; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h2>Feedback System Test</h2>
+    
+    <div class="test-section">
+        <h3>Notification Tests</h3>
+        <button onclick="showSuccess('Operation completed successfully!')">Test Success</button>
+        <button onclick="showError('An error occurred!')">Test Error</button>
+        <button onclick="testMultiple()">Test Multiple</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Loading State Test</h3>
+        <button id="testBtn" onclick="testLoading()">Test Loading</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Form Submission Test</h3>
+        <form id="testForm">
+            <input type="text" name="test" value="test" style="padding: 5px; margin: 5px;">
+            <button type="submit">Submit Form</button>
+        </form>
+        <p id="result"></p>
+    </div>
+    
+    <script>
+        function testMultiple() {
+            showSuccess('First notification');
+            setTimeout(() => showError('Second notification'), 500);
+            setTimeout(() => showSuccess('Third notification'), 1000);
+        }
+        
+        function testLoading() {
+            const btn = document.getElementById('testBtn');
+            setLoading(btn, true);
+            setTimeout(() => {
+                setLoading(btn, false);
+                showSuccess('Loading complete!');
+            }, 2000);
+        }
+        
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const btn = this.querySelector('button[type="submit"]');
+            setLoading(btn, true);
+            
+            // Simulate API call
+            setTimeout(() => {
+                setLoading(btn, false);
+                showSuccess('Form submitted successfully!');
+                document.getElementById('result').textContent = 'Last submission: ' + new Date().toLocaleTimeString();
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

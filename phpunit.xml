@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php" 
+         colors="true"
+         enforceTimeLimit="true"
+         defaultTimeLimit="30"
+         timeoutForSmallTests="10"
+         timeoutForMediumTests="30"
+         timeoutForLargeTests="60">
+    <php>
+        <ini name="error_reporting" value="E_ALL &amp; ~E_DEPRECATED" />
+    </php>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/integration</directory>
+        </testsuite>
+        <testsuite name="E2E">
+            <directory>tests/e2e</directory>
+        </testsuite>
+        <testsuite name="Harness">
+            <file>tests/helpers/ChrootTestEnvironmentHarnessTest.php</file>
+            <file>tests/harness/UnraidTestHarnessVerificationTest.php</file>
+        </testsuite>
+    </testsuites>
+</phpunit>

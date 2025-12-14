@@ -1,0 +1,15 @@
+UL.jqueryFileTree{font-family:clear-sans;font-size:1.2rem;line-height:1.8rem;padding:0;margin:0;display:none}
+UL.jqueryFileTree LI{list-style:none;padding:0;padding-left:20px;margin:0;white-space:nowrap}
+UL.jqueryFileTree A{color:inherit;text-decoration:none;display:inline-block;padding:0 2px}
+UL.jqueryFileTree A:hover{background:#a0a0a0}
+/* Core Styles */
+.jqueryFileTree LI.directory{background:url(../images/directory.png) left top no-repeat}
+.jqueryFileTree LI.expanded{background:url(../images/folder_open.png) left top no-repeat}
+.jqueryFileTree LI.file{background:url(../images/file.png) left top no-repeat}
+.jqueryFileTree LI.wait{background:url(../images/spinner.gif) left top no-repeat}
+/* File Extensions*/
+.jqueryFileTree LI.ext_img{background:url(../images/disk-image.png) left top no-repeat}
+.jqueryFileTree LI.ext_iso{background:url(../images/cdrom.png) left top no-repeat}
+.jqueryFileTree LI.ext_plg{background:url(../images/plg.png) left top no-repeat}
+.jqueryFileTree LI.ext_qcow{background:url(../images/disk-image.png) left top no-repeat}
+.jqueryFileTree LI.ext_qcow2{background:url(../images/disk-image.png) left top no-repeat}

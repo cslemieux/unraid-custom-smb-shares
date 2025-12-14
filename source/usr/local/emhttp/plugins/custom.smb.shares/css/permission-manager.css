@@ -1,0 +1,26 @@
+/**
+ * Permission Manager Styles
+ */
+
+.permission-manager {
+    display: flex;
+    gap: 20px;
+    margin: 10px 0;
+}
+
+.permission-section {
+    flex: 1;
+}
+
+.permission-section h4 {
+    margin: 0 0 10px 0;
+    color: var(--text-color);
+    font-size: 1em;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .permission-manager {
+        flex-direction: column;
+    }
+}

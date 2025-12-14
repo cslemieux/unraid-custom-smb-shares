@@ -1,0 +1,10 @@
+parameters:
+    level: 8
+    paths:
+        - source/
+    excludePaths:
+        - tests/
+        - vendor/
+    scanFiles:
+        - phpstan-stubs.php
+    reportUnmatchedIgnoredErrors: false

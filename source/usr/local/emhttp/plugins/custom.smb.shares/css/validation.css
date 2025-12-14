@@ -1,0 +1,22 @@
+.error {
+    border-color: #ff6b6b !important;
+    background-color: rgba(255, 107, 107, 0.1);
+}
+
+.field-error {
+    color: #ff6b6b;
+    font-size: 12px;
+    margin-top: 4px;
+    display: none;
+}
+
+/* Position filetree dropdown below input field */
+.fileTree {
+    /* position: absolute inherited from default-dynamix.css */
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}

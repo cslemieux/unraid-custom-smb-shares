@@ -1,0 +1,56 @@
+/* Tab buttons - centered */
+.tab-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--table-border-color, #444);
+}
+
+.tab-button {
+    padding: 8px 16px;
+    background: var(--button-background, #1c1c1c);
+    border: 1px solid var(--button-border-color, #444);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--button-text-color, #ccc);
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.tab-button.active {
+    background: var(--button-active-background, #ff8c2f);
+    color: var(--button-active-text-color, #fff);
+    font-weight: bold;
+    border-color: var(--button-active-border-color, #ff8c2f);
+}
+
+.tab-button:hover:not(.active) {
+    background: var(--button-hover-background, #2a2a2a);
+}
+
+/* Tab content */
+.tab-content {
+    display: none;
+    padding: 10px 0;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Form action buttons */
+.form-actions {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--hr-color, #444);
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.form-actions input[type="submit"],
+.form-actions input[type="button"] {
+    min-width: 80px;
+}
