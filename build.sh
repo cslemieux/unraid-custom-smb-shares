@@ -1,22 +1,27 @@
 #!/bin/bash
 # Production-grade build script for Custom SMB Shares plugin
+# Follows Slackware/Unraid packaging conventions while adding quality checks
 set -e
 
 # Usage
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    echo "Usage: $0 [OPTIONS]"
+    echo "Usage: $0 [OPTIONS] [VERSION_SUFFIX]"
     echo ""
     echo "Options:"
     echo "  -f, --fast           Fast build (skip tests)"
     echo "  -h, --help           Show this help"
     echo ""
+    echo "Arguments:"
+    echo "  VERSION_SUFFIX       Optional suffix to append to version (e.g., 'a', 'b')"
+    echo ""
     echo "Environment:"
     echo "  GENERATE_COVERAGE=true   Generate coverage report (slow)"
     echo ""
     echo "Examples:"
-    echo "  $0                   Full build with tests (~10s)"
-    echo "  $0 --fast            Fast build without tests (~3s)"
-    echo "  GENERATE_COVERAGE=true $0   Full build with coverage (~6min)"
+    echo "  $0                   Full build with tests"
+    echo "  $0 --fast            Fast build without tests"
+    echo "  $0 a                 Build with version suffix 'a' (e.g., 2025.01.18a)"
+    echo "  GENERATE_COVERAGE=true $0   Full build with coverage"
     exit 0
 fi
 
@@ -28,11 +33,33 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-VERSION="2025.01.18"
 PLUGIN_NAME="custom.smb.shares"
+VERSION=$(date +"%Y.%m.%d")
 BUILD_DIR="build"
 ARCHIVE_DIR="archive"
 COVERAGE_DIR="coverage"
+
+# Parse arguments
+FAST_BUILD=false
+VERSION_SUFFIX=""
+
+for arg in "$@"; do
+    case $arg in
+        -f|--fast)
+            FAST_BUILD=true
+            ;;
+        -h|--help)
+            # Already handled above
+            ;;
+        *)
+            # Assume it's a version suffix
+            VERSION_SUFFIX="$arg"
+            ;;
+    esac
+done
+
+# Apply version suffix if provided
+VERSION="${VERSION}${VERSION_SUFFIX}"
 
 # Functions
 log_info() {
@@ -68,12 +95,6 @@ run_step() {
 
 # Main build process
 main() {
-    # Parse arguments
-    FAST_BUILD=false
-    if [ "$1" = "--fast" ] || [ "$1" = "-f" ]; then
-        FAST_BUILD=true
-    fi
-    
     echo "╔════════════════════════════════════════════════════════════╗"
     echo "║  Custom SMB Shares Plugin - Production Build              ║"
     echo "║  Version: $VERSION                                    ║"
@@ -85,10 +106,22 @@ main() {
     
     # Check dependencies
     log_info "Checking dependencies..."
+    
     if ! command -v composer &> /dev/null; then
         log_error "Composer not found. Please install composer."
         exit 1
     fi
+    
+    # Check for makepkg (Slackware package builder)
+    # If not available, we'll fall back to tar
+    USE_MAKEPKG=false
+    if command -v makepkg &> /dev/null; then
+        USE_MAKEPKG=true
+        log_success "makepkg found (Slackware packaging)"
+    else
+        log_warning "makepkg not found - using tar fallback (install Slackware pkgtools for native packaging)"
+    fi
+    
     log_success "Dependencies OK"
     
     # Validate source code syntax
@@ -121,26 +154,26 @@ main() {
     
     # Step 3: JavaScript Syntax Validation
     log_info "Validating JavaScript syntax..."
-    if ! command -v jshint &> /dev/null; then
-        log_error "JSHint not found. Install with: npm install -g jshint"
-        exit 1
-    fi
-    
-    JS_ERRORS=0
-    for js_file in source/usr/local/emhttp/plugins/${PLUGIN_NAME}/js/*.js; do
-        if [ -f "$js_file" ]; then
-            if jshint "$js_file" 2>&1; then
-                log_success "$(basename $js_file) - syntax OK"
-            else
-                log_error "$(basename $js_file) - syntax errors"
-                JS_ERRORS=$((JS_ERRORS + 1))
+    if command -v jshint &> /dev/null; then
+        JS_ERRORS=0
+        for js_file in source/usr/local/emhttp/plugins/${PLUGIN_NAME}/js/*.js; do
+            if [ -f "$js_file" ]; then
+                if jshint "$js_file" > /dev/null 2>&1; then
+                    log_success "$(basename $js_file) - syntax OK"
+                else
+                    log_error "$(basename $js_file) - syntax errors"
+                    jshint "$js_file"
+                    JS_ERRORS=$((JS_ERRORS + 1))
+                fi
             fi
+        done
+        
+        if [ $JS_ERRORS -gt 0 ]; then
+            log_error "$JS_ERRORS JavaScript file(s) have syntax errors"
+            exit 1
         fi
-    done
-    
-    if [ $JS_ERRORS -gt 0 ]; then
-        log_error "$JS_ERRORS JavaScript file(s) have syntax errors"
-        exit 1
+    else
+        log_warning "JSHint not found - skipping JS validation (install with: npm install -g jshint)"
     fi
     
     # Step 4: Run Tests
@@ -180,20 +213,46 @@ main() {
     rm -rf ${BUILD_DIR} ${ARCHIVE_DIR}
     mkdir -p ${BUILD_DIR} ${ARCHIVE_DIR}
     
-    # Copy source files
-    cp -r source/* ${BUILD_DIR}/
+    # Copy source files to build directory
+    # Exclude build scripts and dev files (following user.scripts pattern)
+    cp -R source/* ${BUILD_DIR}/
+    
+    # Remove any dev files that shouldn't be in the package
+    find ${BUILD_DIR} -name ".DS_Store" -delete 2>/dev/null || true
+    find ${BUILD_DIR} -name "*.bak" -delete 2>/dev/null || true
+    
+    # Set proper permissions
+    find ${BUILD_DIR} -type d -exec chmod 755 {} \;
+    find ${BUILD_DIR} -type f -exec chmod 644 {} \;
+    find ${BUILD_DIR} -name "*.sh" -exec chmod 755 {} \;
     
     # Write VERSION file
     echo "${VERSION}" > ${BUILD_DIR}/usr/local/emhttp/plugins/${PLUGIN_NAME}/VERSION
     
-    # Create tarball (Unraid uses .txz which is tar + xz compression)
+    # Package naming follows Slackware convention: name-version-arch-build.txz
+    PACKAGE_NAME="${PLUGIN_NAME}-${VERSION}-x86_64-1.txz"
+    
+    # Create package
     cd ${BUILD_DIR}
-    tar --owner=root --group=root -cJf ../${ARCHIVE_DIR}/${PLUGIN_NAME}-${VERSION}.txz *
+    
+    if [ "$USE_MAKEPKG" = true ]; then
+        # Use Slackware's makepkg (preferred)
+        makepkg -l y -c y ../${ARCHIVE_DIR}/${PACKAGE_NAME}
+    else
+        # Fallback: use tar directly (works on macOS/Linux without pkgtools)
+        tar --owner=root --group=root -cJf ../${ARCHIVE_DIR}/${PACKAGE_NAME} *
+    fi
+    
     cd ..
     
     # Calculate MD5
     cd ${ARCHIVE_DIR}
-    md5sum ${PLUGIN_NAME}-${VERSION}.txz | awk '{print $1}' > ${PLUGIN_NAME}-${VERSION}.md5
+    if command -v md5sum &> /dev/null; then
+        md5sum ${PACKAGE_NAME} | awk '{print $1}' > ${PLUGIN_NAME}-${VERSION}.md5
+    else
+        # macOS fallback
+        md5 -q ${PACKAGE_NAME} > ${PLUGIN_NAME}-${VERSION}.md5
+    fi
     MD5=$(cat ${PLUGIN_NAME}-${VERSION}.md5)
     cd ..
     
@@ -205,15 +264,19 @@ main() {
     echo "║  Build Complete!                                           ║"
     echo "╚════════════════════════════════════════════════════════════╝"
     echo ""
-    echo "Package: ${ARCHIVE_DIR}/${PLUGIN_NAME}-${VERSION}.txz"
+    echo "Package: ${ARCHIVE_DIR}/${PACKAGE_NAME}"
     echo "MD5:     ${MD5}"
-    echo "Size:    $(du -h ${ARCHIVE_DIR}/${PLUGIN_NAME}-${VERSION}.txz | cut -f1)"
+    echo "Size:    $(du -h ${ARCHIVE_DIR}/${PACKAGE_NAME} | cut -f1)"
     echo ""
-    echo "Update .plg file with this MD5:"
-    echo "<!ENTITY md5       \"${MD5}\">"
+    echo "Update .plg file with:"
+    echo "  <!ENTITY version   \"${VERSION}\">"
+    echo "  <!ENTITY md5       \"${MD5}\">"
+    echo ""
+    echo "And update the FILE URL to:"
+    echo "  &gitURL;/archive/${PACKAGE_NAME}"
     echo ""
     echo "Next steps:"
-    echo "  1. Update custom.smb.shares.plg with new MD5"
+    echo "  1. Update custom.smb.shares.plg with new version and MD5"
     echo "  2. Deploy to test: ./deploy.sh"
     echo "  3. Test on Unraid server"
     echo "  4. Commit and push to GitHub"

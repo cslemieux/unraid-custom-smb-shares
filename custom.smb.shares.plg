@@ -43,9 +43,9 @@
 - Comprehensive error handling
 </CHANGES>
 
-<!-- Download plugin package -->
-<FILE Name="&plgPATH;/&name;-&version;.txz">
-<URL>&gitURL;/archive/&name;-&version;.txz</URL>
+<!-- Download plugin package (Slackware naming: name-version-arch-build.txz) -->
+<FILE Name="&plgPATH;/&name;-&version;-x86_64-1.txz">
+<URL>&gitURL;/archive/&name;-&version;-x86_64-1.txz</URL>
 <MD5>&md5;</MD5>
 </FILE>
 
@@ -68,19 +68,19 @@ if [[ ${version:0:4} < "6.12" ]]; then
 fi
 
 # Verify MD5 checksum
-sum1=$(/usr/bin/md5sum &plgPATH;/&name;-&version;.txz | awk '{print $1}')
+sum1=$(/usr/bin/md5sum &plgPATH;/&name;-&version;-x86_64-1.txz | awk '{print $1}')
 sum2=$(/usr/bin/cat &plgPATH;/&name;-&version;.md5)
 if [ "${sum1}" != "${sum2}" ]; then
   echo "ERROR: MD5 checksum mismatch"
   echo "Expected: ${sum2}"
   echo "Got: ${sum1}"
-  rm -f &plgPATH;/&name;-&version;.txz &plgPATH;/&name;-&version;.md5
+  rm -f &plgPATH;/&name;-&version;-x86_64-1.txz &plgPATH;/&name;-&version;.md5
   exit 1
 fi
 
 # Install package
 echo "Installing &name; v&version;..."
-upgradepkg --install-new &plgPATH;/&name;-&version;.txz
+upgradepkg --install-new &plgPATH;/&name;-&version;-x86_64-1.txz
 
 # Create config directory
 mkdir -p &plgPATH;
@@ -95,7 +95,7 @@ chmod 644 &plgPATH;/shares.json
 chmod 755 &plugdir;/scripts/*.sh 2>/dev/null || true
 
 # Cleanup old versions
-find &plgPATH;/ -type f -iname "&name;*.txz" ! -iname "*&version;*" -delete
+find &plgPATH;/ -type f -iname "&name;*-x86_64-1.txz" ! -iname "*&version;*" -delete
 find &plgPATH;/ -type f -iname "&name;*.md5" ! -iname "*&version;*" -delete
 
 echo ""
@@ -118,7 +118,7 @@ echo ""
 echo "Removing &name;..."
 
 # Remove plugin files
-removepkg &name;-&version; 2>/dev/null || true
+removepkg &name;-&version;-x86_64-1 2>/dev/null || true
 rm -rf &plugdir;
 
 # Note: Configuration files in &plgPATH; are preserved
