@@ -3,11 +3,17 @@
 require_once __DIR__ . '/../harness/SambaMock.php';
 require_once __DIR__ . '/../harness/HarnessConfig.php';
 
+// Load ConfigRegistry for test isolation
+require_once dirname(__DIR__, 2) . '/source/usr/local/emhttp/plugins/custom.smb.shares/include/ConfigRegistry.php';
+
 /**
  * Chroot Test Environment
  * 
  * Creates Unraid-like directory structure for integration testing
  * Aligned with UnraidTestHarness structure
+ * 
+ * Uses ConfigRegistry to ensure proper test isolation - each test can have
+ * its own config base path that is properly reset between tests.
  */
 class ChrootTestEnvironment
 {
@@ -16,12 +22,17 @@ class ChrootTestEnvironment
     
     /**
      * Setup chroot environment with Unraid structure
+     * 
+     * @return string The CONFIG_BASE path for this environment
      */
     public static function setup()
     {
         // Reuse existing environment if already set up
         if (self::$chrootDir && is_dir(self::$chrootDir) && is_dir(self::$chrootDir . '/mnt/user')) {
-            return self::$chrootDir . '/usr/local/boot/config';
+            $configBase = self::$chrootDir . '/usr/local/boot/config';
+            // Ensure ConfigRegistry is set to this path
+            ConfigRegistry::setConfigBase($configBase);
+            return $configBase;
         }
         
         // Use /tmp directly to match UnraidTestHarness
@@ -45,17 +56,40 @@ class ChrootTestEnvironment
         // Initialize SambaMock
         SambaMock::init(self::$chrootDir);
         
-        // Return CONFIG_BASE path (matches router.php resolution)
-        return self::$chrootDir . '/usr/local/boot/config';
+        // Set ConfigRegistry to use this chroot's config path
+        $configBase = self::$chrootDir . '/usr/local/boot/config';
+        ConfigRegistry::setConfigBase($configBase);
+        
+        return $configBase;
     }
     
     /**
      * Teardown chroot environment
+     * 
+     * Resets ConfigRegistry and clears the chroot directory reference
+     * so the next test class gets a fresh environment
      */
     public static function teardown()
     {
+        // Reset ConfigRegistry to default (important for test isolation)
+        ConfigRegistry::reset();
+        
+        // Clear the static reference so next setup() creates a fresh directory
+        // This ensures test isolation between test classes
+        self::$chrootDir = null;
+    }
+    
+    /**
+     * Force teardown - actually deletes the chroot directory
+     * Use this in test class tearDownAfterClass() if needed
+     */
+    public static function teardownForce()
+    {
+        ConfigRegistry::reset();
+        
         if (self::$chrootDir && is_dir(self::$chrootDir)) {
             exec('rm -rf ' . escapeshellarg(self::$chrootDir));
+            self::$chrootDir = null;
         }
     }
     

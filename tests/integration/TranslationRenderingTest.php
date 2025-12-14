@@ -22,15 +22,11 @@ class TranslationRenderingTest extends TestCase
 
     protected function setUp(): void
     {
+        // ChrootTestEnvironment::setup() now sets ConfigRegistry automatically
         $this->configDir = ChrootTestEnvironment::setup();
         $this->pluginDir = dirname(__DIR__, 2) . '/source/usr/local/emhttp/plugins/custom.smb.shares';
         
-        // Define CONFIG_BASE if not already defined
-        if (!defined('CONFIG_BASE')) {
-            define('CONFIG_BASE', $this->configDir);
-        }
-        
-        // Load lib.php once (it defines functions)
+        // Load lib.php once (it defines functions and loads ConfigRegistry)
         if (!self::$libLoaded) {
             require_once $this->pluginDir . '/include/lib.php';
             self::$libLoaded = true;
@@ -39,6 +35,7 @@ class TranslationRenderingTest extends TestCase
 
     protected function tearDown(): void
     {
+        // ChrootTestEnvironment::teardown() now resets ConfigRegistry
         ChrootTestEnvironment::teardown();
     }
 
@@ -122,9 +119,11 @@ class TranslationRenderingTest extends TestCase
      */
     public function testShareFormCanBeIncluded(): void
     {
-        // Set up global $var for CSRF token
-        global $var;
+        // Set up global $var for CSRF token and $docroot like Unraid does
+        // ShareForm.php uses $docroot for includes because __DIR__ doesn't work in eval() context
+        global $var, $docroot;
         $var = ['csrf_token' => 'test-token'];
+        $docroot = dirname($this->pluginDir, 2); // /usr/local/emhttp equivalent
         
         $shareFormPath = $this->pluginDir . '/include/ShareForm.php';
         $this->assertFileExists($shareFormPath, 'ShareForm.php must exist');
@@ -150,8 +149,9 @@ class TranslationRenderingTest extends TestCase
      */
     public function testRenderedOutputUsesMarkdownMarkers(): void
     {
-        global $var;
+        global $var, $docroot;
         $var = ['csrf_token' => 'test-token'];
+        $docroot = dirname($this->pluginDir, 2);
         
         // Capture output from ShareForm.php (inline PHP)
         ob_start();
@@ -175,8 +175,9 @@ class TranslationRenderingTest extends TestCase
      */
     public function testFormLabelsAreReadable(): void
     {
-        global $var;
+        global $var, $docroot;
         $var = ['csrf_token' => 'test-token'];
+        $docroot = dirname($this->pluginDir, 2);
         
         ob_start();
         include $this->pluginDir . '/include/ShareForm.php';
@@ -194,8 +195,9 @@ class TranslationRenderingTest extends TestCase
      */
     public function testEditModeLoadsShareData(): void
     {
-        global $var;
+        global $var, $docroot;
         $var = ['csrf_token' => 'test-token'];
+        $docroot = dirname($this->pluginDir, 2);
         
         // Create a test share
         $testShare = [

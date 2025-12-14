@@ -4,9 +4,9 @@
  * Shared form for Add/Update pages (following Docker plugin pattern)
  */
 
-global $var; // For CSRF token - provided by Unraid's page renderer
+global $var, $docroot; // For CSRF token and docroot - provided by Unraid's page renderer
 
-require_once __DIR__ . '/lib.php';
+require_once "$docroot/plugins/custom.smb.shares/include/lib.php";
 
 $shareName = $_GET['name'] ?? '';
 $shares = loadShares();

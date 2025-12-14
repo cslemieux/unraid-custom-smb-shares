@@ -1,8 +1,10 @@
 <?php
 
 require_once __DIR__ . '/TestModeDetector.php';
+require_once __DIR__ . '/ConfigRegistry.php';
 
-// Allow path override for testing
+// Define CONFIG_BASE constant for backward compatibility
+// New code should use ConfigRegistry::getConfigBase() instead
 if (!defined('CONFIG_BASE')) {
     define('CONFIG_BASE', '/boot/config');
 }
@@ -14,7 +16,7 @@ if (!defined('CONFIG_BASE')) {
  */
 function isPluginEnabled(?string $configBase = null): bool
 {
-    $base = $configBase ?? CONFIG_BASE;
+    $base = $configBase ?? ConfigRegistry::getConfigBase();
     $configFile = $base . '/plugins/custom.smb.shares/settings.cfg';
     if (!file_exists($configFile)) {
         return true; // Default to enabled
@@ -125,7 +127,7 @@ function sanitizeShareData(array $data): array
  */
 function loadShares(?string $configBase = null): array
 {
-    $base = $configBase ?? CONFIG_BASE;
+    $base = $configBase ?? ConfigRegistry::getConfigBase();
     $file = $base . '/plugins/custom.smb.shares/shares.json';
     if (!file_exists($file)) {
         return [];
@@ -145,7 +147,7 @@ function loadShares(?string $configBase = null): array
  */
 function saveShares(array $shares, ?string $configBase = null)
 {
-    $base = $configBase ?? CONFIG_BASE;
+    $base = $configBase ?? ConfigRegistry::getConfigBase();
     $file = $base . '/plugins/custom.smb.shares/shares.json';
     $dir = dirname($file);
     if (!is_dir($dir)) {
@@ -365,8 +367,8 @@ function reloadSamba(): array
  */
 function getSambaStatus(): array
 {
-    if (TestModeDetector::isTestMode() && defined('CONFIG_BASE')) {
-        $configBase = str_replace('/private/tmp/', '/tmp/', CONFIG_BASE);
+    if (TestModeDetector::isTestMode()) {
+        $configBase = str_replace('/private/tmp/', '/tmp/', ConfigRegistry::getConfigBase());
         $harnessRoot = dirname(dirname(dirname(dirname($configBase))));
         $rcSamba = $harnessRoot . '/etc/rc.d/rc.samba';
 
@@ -391,8 +393,8 @@ function getSambaStatus(): array
  */
 function ensureSambaInclude(): bool
 {
-    $smbExtraConf = CONFIG_BASE . '/smb-extra.conf';
-    $pluginConf = CONFIG_BASE . '/plugins/custom.smb.shares/smb-custom.conf';
+    $smbExtraConf = ConfigRegistry::getSmbExtraConfPath();
+    $pluginConf = ConfigRegistry::getSmbCustomConfPath();
     $includeLine = "include = $pluginConf";
 
     // In test mode, skip this (mock environment)

@@ -342,41 +342,60 @@ if (preg_match('/\.page$/', $path)) {
         define('CONFIG_BASE', $_SERVER['DOCUMENT_ROOT'] . '/../boot/config');
     }
     
+    // Set up $docroot like Unraid does - this is critical for includes
+    // Unraid sets $docroot = $_SERVER['DOCUMENT_ROOT'] in local_prepend.php
+    $docroot = $_SERVER['DOCUMENT_ROOT'];
+    
     // Set include path to find plugin files
-    $pluginDir = $_SERVER['DOCUMENT_ROOT'] . '/plugins/custom.smb.shares';
+    $pluginDir = $docroot . '/plugins/custom.smb.shares';
     set_include_path(get_include_path() . PATH_SEPARATOR . $pluginDir);
     
-    // Execute page content with path fixes
+    // Get page content
     $pageContent = trim($parts[1]);
     error_log("Router: Page content length: " . strlen($pageContent));
     
-    // Write page content to temp file and include it (safer than eval)
-    $tempFile = tempnam(sys_get_temp_dir(), 'unraid-page-') . '.php';
-    
-    // Replace absolute paths with relative paths
+    // Replace absolute paths with $docroot-relative paths (like Unraid expects)
     $pageContent = str_replace(
         "require_once '/usr/local/emhttp/plugins/custom.smb.shares/",
-        "require_once '" . $pluginDir . "/",
+        "require_once \"\$docroot/plugins/custom.smb.shares/",
         $pageContent
     );
     
-    file_put_contents($tempFile, $pageContent);
+    // Check if Markdown processing is enabled (default: true, like Unraid)
+    $useMarkdown = !isset($meta['Markdown']) || strtolower($meta['Markdown'] ?? 'true') !== 'false';
     
-    error_log("Router: Including temp file: $tempFile");
+    // Process page content using Unraid's pattern from MainContent.php:
+    // 1. parse_text() - handles _(...)_ translation markers
+    // 2. Markdown() - converts Markdown to HTML (if enabled)
+    // 3. eval('?' . '>'.content) - executes PHP in the content
+    //
+    // This replicates: eval('?' . '>'.generateContent($page));
+    // where generateContent() does: Markdown(parse_text($page['text']))
     
-    // Include the file with guaranteed cleanup
+    error_log("Router: Processing with parse_text" . ($useMarkdown ? " + Markdown" : ""));
+    
+    // Process translations
+    $processedContent = parse_text($pageContent);
+    
+    // Apply Markdown if enabled
+    if ($useMarkdown) {
+        $processedContent = Markdown($processedContent);
+    }
+    
+    error_log("Router: Executing via eval (Unraid pattern)");
+    
+    // Execute using eval('?' . '>'.content) - exactly like Unraid does
+    // This is why __DIR__ doesn't work in page content (resolves to cwd, not file dir)
+    // and why we must use $docroot for includes
     try {
-        include $tempFile;
-        error_log("Router: Include completed successfully");
+        // Use concatenation to avoid parser issues with close tag in string literal
+        $phpCloseTag = '?' . '>';
+        eval($phpCloseTag . $processedContent);
+        error_log("Router: eval completed successfully");
     } catch (Throwable $e) {
-        error_log("Router: Include error: " . $e->getMessage());
+        error_log("Router: eval error: " . $e->getMessage());
         echo "<pre>Error: " . htmlspecialchars($e->getMessage()) . "\n";
         echo htmlspecialchars($e->getTraceAsString()) . "</pre>";
-    } finally {
-        // Clean up temp file
-        if (file_exists($tempFile) && !unlink($tempFile)) {
-            error_log("Failed to delete temp file: $tempFile");
-        }
     }
     
     // Close body and html tags after page content
