@@ -295,4 +295,147 @@ class BackupUITest extends TestCase
         $functionExists = self::$driver->executeScript("return typeof deleteBackup === 'function';");
         $this->assertTrue($functionExists, 'deleteBackup function should exist in global scope');
     }
+    
+    /**
+     * Test that Restore makes AJAX call and gets response
+     */
+    public function testRestoreBackupMakesAjaxCall(): void
+    {
+        self::$driver->get(self::$harness['url'] . '/SMBSharesSettings');
+        
+        // Wait for backup list to load
+        self::$driver->wait(10)->until(function($driver) {
+            $links = $driver->findElements(WebDriverBy::cssSelector('.backup-restore'));
+            return count($links) > 0;
+        });
+        
+        // Get the filename from the first backup
+        $restoreLink = self::$driver->findElement(WebDriverBy::cssSelector('.backup-restore'));
+        $filename = $restoreLink->getAttribute('data-filename');
+        
+        // Test the API directly (not through the UI confirmation dialog)
+        self::$driver->executeScript("
+            window.testAjaxResult = null;
+            window.testAjaxError = null;
+            window.testAjaxDone = false;
+            $.post('/plugins/custom.smb.shares/api.php', {action: 'restoreBackup', filename: '$filename'})
+                .done(function(data) {
+                    window.testAjaxResult = data;
+                    window.testAjaxDone = true;
+                })
+                .fail(function(xhr, status, error) {
+                    window.testAjaxError = {status: status, error: error, response: xhr.responseText};
+                    window.testAjaxDone = true;
+                });
+        ");
+        
+        // Wait for AJAX to complete
+        self::$driver->wait(10)->until(function($driver) {
+            return $driver->executeScript("return window.testAjaxDone === true;");
+        });
+        
+        // Check for errors
+        $error = self::$driver->executeScript("return window.testAjaxError;");
+        $this->assertNull($error, 'Restore AJAX call should not error: ' . json_encode($error));
+        
+        $response = self::$driver->executeScript("return window.testAjaxResult;");
+        
+        $this->assertNotNull($response, 'Restore AJAX call should return response');
+        $this->assertTrue($response['success'], 'Restore API should return success');
+    }
+    
+    /**
+     * Test that Delete makes AJAX call and gets response
+     */
+    public function testDeleteBackupMakesAjaxCall(): void
+    {
+        // Create a specific backup to delete (so we don't affect other tests)
+        $configDir = self::$harness['harness_dir'] . '/boot/config';
+        $backupDir = $configDir . '/plugins/custom.smb.shares/backups';
+        $deleteFilename = 'shares_1999-01-01_00-00-00.json';
+        file_put_contents($backupDir . '/' . $deleteFilename, json_encode([['name' => 'ToDelete']]));
+        
+        self::$driver->get(self::$harness['url'] . '/SMBSharesSettings');
+        
+        // Wait for backup list to load
+        self::$driver->wait(10)->until(function($driver) {
+            $links = $driver->findElements(WebDriverBy::cssSelector('.backup-delete'));
+            return count($links) > 0;
+        });
+        
+        // Test the API directly
+        self::$driver->executeScript("
+            window.testAjaxResult = null;
+            window.testAjaxError = null;
+            window.testAjaxDone = false;
+            $.post('/plugins/custom.smb.shares/api.php', {action: 'deleteBackup', filename: '$deleteFilename'})
+                .done(function(data) {
+                    window.testAjaxResult = data;
+                    window.testAjaxDone = true;
+                })
+                .fail(function(xhr, status, error) {
+                    window.testAjaxError = {status: status, error: error, response: xhr.responseText};
+                    window.testAjaxDone = true;
+                });
+        ");
+        
+        // Wait for AJAX to complete
+        self::$driver->wait(10)->until(function($driver) {
+            return $driver->executeScript("return window.testAjaxDone === true;");
+        });
+        
+        // Check for errors
+        $error = self::$driver->executeScript("return window.testAjaxError;");
+        $this->assertNull($error, 'Delete AJAX call should not error: ' . json_encode($error));
+        
+        $response = self::$driver->executeScript("return window.testAjaxResult;");
+        
+        $this->assertNotNull($response, 'Delete AJAX call should return response');
+        $this->assertTrue($response['success'], 'Delete API should return success');
+        
+        // Verify file was actually deleted
+        $this->assertFileDoesNotExist($backupDir . '/' . $deleteFilename, 'Backup file should be deleted');
+    }
+    
+    /**
+     * Test Create Backup button makes AJAX call
+     */
+    public function testCreateBackupMakesAjaxCall(): void
+    {
+        self::$driver->get(self::$harness['url'] . '/SMBSharesSettings');
+        
+        // Wait for page to load
+        sleep(1);
+        
+        // Test the API directly
+        self::$driver->executeScript("
+            window.testAjaxResult = null;
+            window.testAjaxError = null;
+            window.testAjaxDone = false;
+            $.post('/plugins/custom.smb.shares/api.php', {action: 'createBackup'})
+                .done(function(data) {
+                    window.testAjaxResult = data;
+                    window.testAjaxDone = true;
+                })
+                .fail(function(xhr, status, error) {
+                    window.testAjaxError = {status: status, error: error, response: xhr.responseText};
+                    window.testAjaxDone = true;
+                });
+        ");
+        
+        // Wait for AJAX to complete
+        self::$driver->wait(10)->until(function($driver) {
+            return $driver->executeScript("return window.testAjaxDone === true;");
+        });
+        
+        // Check for errors
+        $error = self::$driver->executeScript("return window.testAjaxError;");
+        $this->assertNull($error, 'Create backup AJAX call should not error: ' . json_encode($error));
+        
+        $response = self::$driver->executeScript("return window.testAjaxResult;");
+        
+        $this->assertNotNull($response, 'Create backup AJAX call should return response');
+        $this->assertTrue($response['success'], 'Create backup API should return success');
+        $this->assertNotEmpty($response['filename'], 'Create backup should return filename');
+    }
 }

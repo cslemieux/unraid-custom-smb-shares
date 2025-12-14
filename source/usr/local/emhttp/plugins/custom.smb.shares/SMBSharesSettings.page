@@ -90,7 +90,7 @@ function viewBackup(filename) {
         if (response.success) {
             swal({
                 title: filename,
-                text: '<textarea readonly>' + JSON.stringify(response.config, null, 2) + '</textarea>',
+                text: '<textarea readonly style="width:100%;height:400px;font-family:monospace;font-size:12px;resize:vertical;">' + JSON.stringify(response.config, null, 2) + '</textarea>',
                 html: true,
                 confirmButtonText: '_(Close)_'
             });
