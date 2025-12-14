@@ -1,238 +1,206 @@
-# Unraid Test Harness
+# Unraid WebGUI Test Harness
 
-A complete test environment that mimics Unraid's structure with authentication bypass for Selenium testing.
+A comprehensive test harness that emulates Unraid's WebGUI environment for testing plugins outside of Unraid.
 
-## Features
+## Overview
 
-- **Auth Bypass**: Always returns 200 for auth requests
-- **CSRF Validation**: Maintains CSRF token validation like production
-- **Chroot Environment**: Isolated `/mnt/` structure
-- **Full Plugin Support**: Runs actual plugin code
-- **Screenshot Capture**: Automated UI screenshots
-- **No Unraid Server Required**: Runs locally with PHP built-in server
+This harness replicates Unraid's page rendering pipeline and helper functions, allowing you to:
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  PHPUnit Test Suite                     │
-│  ┌──────────────────┬──────────────────┬─────────────┐ │
-│  │  E2ETestBase     │ IntegrationTest  │  Unit Tests │ │
-│  │  (Selenium)      │  (Chroot)        │             │ │
-│  └──────────────────┴──────────────────┴─────────────┘ │
-├─────────────────────────────────────────────────────────┤
-│              UnraidTestHarness (Core)                   │
-│  ┌──────────────┬──────────────┬────────────────────┐  │
-│  │ Router.php   │ SambaMock    │ ChrootEnvironment  │  │
-│  │ (Page parser)│ (rc.samba)   │ (/mnt/ structure)  │  │
-│  └──────────────┴──────────────┴────────────────────┘  │
-│  ┌──────────────┬──────────────┬────────────────────┐  │
-│  │ HarnessConfig│ ProcessMgr   │ HarnessLogger      │  │
-│  │ (Constants)  │ (Kill procs) │ (Logging)          │  │
-│  └──────────────┴──────────────┴────────────────────┘  │
-├─────────────────────────────────────────────────────────┤
-│         PHP Built-in Server (localhost:8888)            │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Document Root: /tmp/unraid-test-harness-xxx/    │  │
-│  │  Router: tests/harness/router.php                │  │
-│  └──────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Directory Structure
-
-```
-/tmp/unraid-test-harness-xxx/
-├── usr/local/emhttp/
-│   ├── auth-request.php          # Auth bypass (always 200)
-│   ├── webGui/include/
-│   │   └── local_prepend.php     # CSRF validation
-│   └── plugins/
-│       └── custom.smb.shares/    # Plugin files
-├── var/local/emhttp/
-│   └── var.ini                   # CSRF token
-├── boot/config/plugins/          # Plugin config
-├── mnt/user/                     # Test shares
-├── logs/                         # Server logs
-└── run/                          # PID files
-```
+- Test `.page` files with proper Markdown and translation processing
+- Test PHP endpoints with CSRF token handling
+- Verify JavaScript behavior with Unraid-compatible utilities
+- Run integration tests without a live Unraid server
 
 ## Components
 
-### 1. Auth Bypass (`auth-request.php`)
+### UnraidFunctions.php
+
+PHP function emulation for Unraid's core helpers:
+
+| Function | Description |
+|----------|-------------|
+| `parse_text($text)` | Process `_(...)_` translation markers |
+| `parse_file($file, $markdown)` | Read file with translation + Markdown |
+| `Markdown($text)` | Convert Markdown to HTML (via Parsedown) |
+| `_($text)` | Translation function (passthrough in test) |
+| `_var(&$name, $key, $default)` | Safe variable/array access |
+| `mk_option($select, $value, $text, $extra)` | Generate `<option>` elements |
+| `my_scale($value, &$unit, $decimals, $scale, $kilo)` | Format bytes with units |
+| `my_number($value)` | Locale-aware number formatting |
+| `my_temp($value)` | Temperature with C/F conversion |
+| `my_time($time, $fmt)` | Locale-aware date/time |
+| `my_disk($name, $raw)` | Format disk names |
+| `parse_plugin_cfg($plugin, $sections, $scanner)` | Load plugin configuration |
+| `my_parse_ini_file($file, $sections, $scanner)` | Parse INI with # comments |
+| `my_parse_ini_string($text, $sections, $scanner)` | Parse INI string |
+| `file_put_contents_atomic($filename, $data)` | Atomic file writes |
+| `my_logger($message, $tag)` | Logging utility |
+| `celsius($temp)` / `fahrenheit($temp)` | Temperature conversion |
+| `autov($file)` | Cache-busting URLs |
+| `compress($data, $decompress)` | Data compression |
+| `my_explode($delimiter, $string, $limit, $default)` | Explode with defaults |
+| `my_preg_split($pattern, $string, $limit)` | Regex split |
+
+### UnraidJavaScript.php
+
+JavaScript emulation for client-side behavior:
 
 ```php
-session_start();
-$_SESSION['unraid_login'] = time();
-http_response_code(200);
+// Get complete inline script
+echo UnraidJavaScript::getInlineScript($csrfToken);
+
+// Or get individual components
+echo UnraidJavaScript::getCsrfHandling($csrfToken);
+echo UnraidJavaScript::getDialogStyle();
+echo UnraidJavaScript::getFormEnhancement($csrfToken);
+echo UnraidJavaScript::getUtilityFunctions();
+echo UnraidJavaScript::getSweetAlertPolyfill();
 ```
 
-Always authorizes requests - no login required.
+**Included JavaScript:**
 
-### 2. CSRF Validation (`local_prepend.php`)
+- `csrf_token` global variable
+- `$(document).ajaxSend()` - Auto-append CSRF to POST requests
+- `dialogStyle()` - Standard jQuery UI dialog styling
+- `done()`, `refresh()`, `signal()` - Navigation helpers
+- `openWindow()`, `openTerminal()` - Window management
+- `toggleElement()`, `validateForm()` - UI utilities
+- `timers` object - Timer management
+- `swal()` polyfill - Basic SweetAlert fallback
 
-Maintains production CSRF validation:
-- Validates POST requests
-- Checks `csrf_token` from `var.ini`
-- Removes token from `$_POST` after validation
+### router.php
 
-### 3. Nginx Configuration
+PHP built-in server router that:
 
-- Listens on port 8888
-- Routes to PHP-FPM via Unix socket
-- Serves plugin files from `/plugins/`
-- Uses auth_request directive
-
-### 4. PHP-FPM Configuration
-
-- Auto-prepends `local_prepend.php`
-- Unix socket communication
-- Isolated process pool
+1. Maps URLs to `.page` files (e.g., `/Settings/CustomSMBShares`)
+2. Processes `.page` files through Unraid's rendering pipeline
+3. Handles PHP endpoints with CSRF validation
+4. Serves static assets (JS, CSS, images)
+5. Validates PHP syntax before execution
+6. Logs AJAX requests for debugging
 
 ## Usage
 
-### Prerequisites
+### Starting the Test Server
 
 ```bash
-# macOS
-brew install nginx php
-
-# Start ChromeDriver
-chromedriver --port=9515 &
+# From project root
+php -S localhost:8888 -t tests/harness/chroot/usr/local/emhttp tests/harness/router.php
 ```
 
-### Run Tests
+### Directory Structure
 
-```bash
-./run-harness-tests.sh
+```
+tests/harness/
+├── router.php              # Main router
+├── UnraidFunctions.php     # PHP function emulation
+├── UnraidJavaScript.php    # JavaScript emulation
+├── dependencies.json       # CDN dependencies (jQuery, etc.)
+├── validate-append.php     # Output validation
+├── assets/                 # Test assets (fileTree, etc.)
+└── chroot/                 # Simulated Unraid filesystem
+    ├── boot/config/        # Persistent config
+    ├── usr/local/emhttp/   # WebGUI files (DOCUMENT_ROOT)
+    │   └── plugins/        # Plugin files
+    └── var/local/emhttp/   # Runtime state (var.ini)
 ```
 
-### Manual Usage
+### Writing Tests
 
 ```php
-require_once 'tests/harness/UnraidTestHarness.php';
+use Tests\Helpers\UnraidTestHarness;
 
-// Setup
-$harness = UnraidTestHarness::setup(8888);
-echo "Test server: " . $harness['url'] . "\n";
-
-// Run tests...
-
-// Teardown
-UnraidTestHarness::teardown();
-```
-
-## Test Examples
-
-### Basic Page Load
-
-```php
-public function testPageLoads()
+class MyPluginTest extends TestCase
 {
-    self::$driver->get(self::$baseUrl . '/Settings/CustomSMBShares');
-    
-    // No auth redirect!
-    $currentUrl = self::$driver->getCurrentURL();
-    $this->assertStringContainsString('CustomSMBShares', $currentUrl);
+    private static $harness;
+
+    public static function setUpBeforeClass(): void
+    {
+        self::$harness = UnraidTestHarness::setup(8888);
+    }
+
+    public function testPageLoads(): void
+    {
+        $response = file_get_contents(self::$harness['url'] . '/Settings/MyPlugin');
+        $this->assertStringContainsString('My Plugin', $response);
+    }
 }
 ```
 
-### Screenshot Capture
+## Global Variables
+
+The harness initializes these globals (matching Unraid):
 
 ```php
-private function takeScreenshot($name)
-{
-    $filename = 'screenshots/' . $name . '.png';
-    self::$driver->takeScreenshot($filename);
-}
+$GLOBALS['display'] = [
+    'scale'    => -1,      // Auto-scale for my_scale()
+    'number'   => '.,',    // Decimal point, thousands separator
+    'unit'     => 'C',     // Temperature unit: C or F
+    'date'     => '%c',    // Date format
+    'time'     => '%R',    // Time format
+    'critical' => 90,      // Critical usage threshold
+    'warning'  => 70,      // Warning usage threshold
+    'raw'      => false,   // Show raw disk names
+];
+
+$GLOBALS['language'] = [
+    'prefix_SI'  => 'K M G T P E Z Y',
+    'prefix_IEC' => 'Ki Mi Gi Ti Pi Ei Zi Yi',
+];
+
+$GLOBALS['var'] = [
+    'csrf_token' => '...',  // Auto-generated
+];
 ```
 
-### Form Interaction
+## Key Patterns Emulated
+
+### Page Rendering Pipeline
+
+Matches Unraid's `MainContent.php`:
 
 ```php
-public function testFormSubmission()
-{
-    $nameField = self::$driver->findElement(WebDriverBy::name('name'));
-    $nameField->sendKeys('TestShare');
-    
-    $submitButton = self::$driver->findElement(WebDriverBy::cssSelector('input[type="submit"]'));
-    $submitButton->click();
-    
-    // CSRF token automatically included by jQuery
-}
+// 1. Process translation markers
+$content = parse_text($pageContent);
+
+// 2. Apply Markdown (if enabled)
+$content = Markdown($content);
+
+// 3. Execute PHP via eval (like Unraid)
+eval('?' . '>' . $content);
 ```
 
-## Benefits
+### CSRF Token Flow
 
-### vs. Real Unraid Server
+1. Token stored in `var/local/emhttp/var.ini`
+2. Injected as global JS variable: `var csrf_token = "..."`
+3. jQuery `ajaxSend` auto-appends to all POST requests
+4. Forms get hidden `csrf_token` field on page load
 
-- ✅ No authentication required
-- ✅ Isolated environment
-- ✅ Fast setup/teardown
-- ✅ No server access needed
-- ✅ Parallel test execution
-- ✅ Screenshot automation
+### Dialog Pattern
 
-### vs. Mock Environment
-
-- ✅ Real nginx + PHP-FPM
-- ✅ Actual plugin code
-- ✅ Real CSRF validation
-- ✅ True browser rendering
-- ✅ Realistic URL routing
-
-## Troubleshooting
-
-### Port Already in Use
-
-```bash
-# Change port in test
-UnraidTestHarness::setup(8889);
+```javascript
+var popup = $("#dialogContainer");
+popup.html($("#templatePopup").html());  // Clone template
+popup.dialog({
+    title: "_(Title)_",
+    modal: true,
+    buttons: { /* ... */ }
+});
+dialogStyle();  // Always call after opening
 ```
 
-### nginx Won't Start
+## Dependencies
 
-```bash
-# Check logs
-cat /tmp/unraid-test-harness-xxx/logs/nginx-error.log
-```
+- PHP 8.0+
+- Parsedown (for Markdown processing)
+- jQuery 3.7+ (loaded from CDN)
+- jQuery UI (loaded from CDN)
 
-### PHP-FPM Issues
+## License
 
-```bash
-# Check logs
-cat /tmp/unraid-test-harness-xxx/logs/php-fpm.log
+GPL-2.0 (matching Unraid WebGUI)
 
-# Verify socket
-ls -la /tmp/unraid-test-harness-xxx/run/php-fpm.sock
-```
+## Credits
 
-### Screenshots Not Saving
-
-```bash
-# Create directory
-mkdir -p screenshots/
-
-# Check permissions
-chmod 755 screenshots/
-```
-
-## Limitations
-
-1. **No Samba**: Doesn't run actual Samba service
-2. **No Array**: No Unraid array management
-3. **No Docker**: Docker integration not available
-4. **Simplified Auth**: Auth bypass only, no user management
-
-## Troubleshooting
-
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues and solutions.
-
-## Future Enhancements
-
-- [ ] Multiple user sessions
-- [ ] Theme switching tests
-- [ ] Mobile viewport testing
-- [ ] Performance profiling
-- [ ] Network throttling
-- [ ] Accessibility testing
+Based on analysis of [Unraid WebGUI](https://github.com/unraid/webgui) source code.

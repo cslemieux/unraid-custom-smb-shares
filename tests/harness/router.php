@@ -7,31 +7,9 @@ declare(strict_types=1);
  * Handles .page files and auth bypass
  */
 
-/**
- * Mock Unraid translation function
- * In production, this is provided by Unraid's WebGUI framework
- * For testing, we simply return the input string
- */
-if (!function_exists('_')) {
-    function _(string $text): string
-    {
-        return $text;
-    }
-}
-
-/**
- * Mock Unraid mk_option helper
- * Generates HTML <option> elements for select dropdowns
- * In production, this is provided by Unraid's WebGUI framework
- */
-if (!function_exists('mk_option')) {
-    function mk_option($selected, $value, $text, $extra = ''): string
-    {
-        $sel = ($selected == $value) ? ' selected' : '';
-        $extraAttr = $extra ? " $extra" : '';
-        return "<option value=\"$value\"$sel$extraAttr>$text</option>";
-    }
-}
+// Load comprehensive Unraid function emulation
+require_once __DIR__ . '/UnraidFunctions.php';
+require_once __DIR__ . '/UnraidJavaScript.php';
 
 // Set CONFIG_BASE globally for all requests
 if (!defined('CONFIG_BASE')) {
@@ -298,7 +276,6 @@ if (preg_match('/\.page$/', $path)) {
         }
     }
     ?>
-    <script>
     <?php
     // Read CSRF token from var.ini
     // Harness structure: $harness_dir/var/local/emhttp/var.ini
@@ -312,9 +289,12 @@ if (preg_match('/\.page$/', $path)) {
             $csrfToken = $varIni['csrf_token'];
         }
     }
-    ?>
-    var csrf_token = "<?= htmlspecialchars($csrfToken) ?>";
     
+    // Inject comprehensive Unraid JavaScript emulation
+    // This includes: CSRF handling, dialogStyle(), form enhancement, utilities, swal polyfill
+    echo UnraidJavaScript::getInlineScript($csrfToken);
+    ?>
+    <script>
     // Simple Shadowbox replacement for testing
     var Shadowbox = {
         init: function() {},
