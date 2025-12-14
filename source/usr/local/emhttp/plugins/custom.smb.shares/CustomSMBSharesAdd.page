@@ -1,8 +1,0 @@
-Menu="CustomSMBShares"
-Title="Add Share"
-Tag="plus"
----
-<?php
-header('Location: /SMBShares/Add');
-exit;
-?>

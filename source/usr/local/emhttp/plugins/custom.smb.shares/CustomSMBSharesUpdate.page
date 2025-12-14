@@ -1,9 +1,0 @@
-Menu="CustomSMBShares"
-Title="Edit Share"
-Tag="edit"
----
-<?php
-$name = $_GET['name'] ?? '';
-header('Location: /SMBShares/Update?name=' . urlencode($name));
-exit;
-?>
