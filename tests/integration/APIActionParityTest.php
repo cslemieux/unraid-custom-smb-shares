@@ -128,4 +128,36 @@ class APIActionParityTest extends TestCase
             "exportConfig should return JSON with 'success' and 'config' keys"
         );
     }
+    
+    /**
+     * Test that export UI has download button
+     */
+    public function testExportHasDownloadButton(): void
+    {
+        $pageFile = self::$pluginDir . '/SMBShares.page';
+        $content = file_get_contents($pageFile);
+        
+        // Export should have a way to download as file
+        $this->assertMatchesRegularExpression(
+            '/download|Download|\.json/i',
+            $content,
+            "Export should have download functionality"
+        );
+    }
+    
+    /**
+     * Test that import UI has file upload option
+     */
+    public function testImportHasFileUpload(): void
+    {
+        $pageFile = self::$pluginDir . '/SMBShares.page';
+        $content = file_get_contents($pageFile);
+        
+        // Import should have file input or FileReader
+        $this->assertMatchesRegularExpression(
+            '/type=["\']file["\']|FileReader|file.*input/i',
+            $content,
+            "Import should have file upload functionality"
+        );
+    }
 }
