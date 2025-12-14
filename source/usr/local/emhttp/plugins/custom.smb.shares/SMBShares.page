@@ -211,31 +211,31 @@ function exportConfig() {
     $.get('/plugins/custom.smb.shares/api.php?action=exportConfig', function(response) {
         if (response.success) {
             var json = JSON.stringify(response.config, null, 2);
+            window._exportedConfig = json;
             swal({
                 title: "_(Export Configuration)_",
                 text: "<textarea readonly style='width:100%;height:200px;'>" + json + "</textarea>" +
-                      "<br><button type='button' class='btn' onclick='downloadConfig()' style='margin-top:10px'>_(Download as File)_</button>",
+                      "<br><button type='button' class='btn' id='downloadConfigBtn' style='margin-top:10px'>_(Download as File)_</button>",
                 html: true,
                 confirmButtonText: "_(Close)_"
             });
-            // Store config for download
-            window._exportedConfig = json;
+            // Attach click handler after modal renders
+            setTimeout(function() {
+                $('#downloadConfigBtn').on('click', function() {
+                    var blob = new Blob([window._exportedConfig], {type: 'application/json'});
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'custom-smb-shares.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            }, 100);
         } else {
             showError(response.error || "_(Export failed)_");
         }
     }, 'json');
-}
-
-function downloadConfig() {
-    if (!window._exportedConfig) return;
-    var blob = new Blob([window._exportedConfig], {type: 'application/json'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'custom-smb-shares.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 </script>

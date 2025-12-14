@@ -130,18 +130,35 @@ class APIActionParityTest extends TestCase
     }
     
     /**
-     * Test that export UI has download button
+     * Test that export UI has download button with proper event binding
+     * 
+     * Bug caught: onclick='functionName()' in dynamically inserted HTML (like SweetAlert)
+     * can't find functions due to scope issues. Must use jQuery event binding after render.
      */
-    public function testExportHasDownloadButton(): void
+    public function testExportDownloadButtonHasProperEventBinding(): void
     {
         $pageFile = self::$pluginDir . '/SMBShares.page';
         $content = file_get_contents($pageFile);
         
-        // Export should have a way to download as file
-        $this->assertMatchesRegularExpression(
-            '/download|Download|\.json/i',
+        // Download button must exist
+        $this->assertStringContainsString(
+            'downloadConfigBtn',
             $content,
-            "Export should have download functionality"
+            "Export should have download button with id"
+        );
+        
+        // Must NOT use inline onclick for dynamically created buttons (scope issues with SweetAlert)
+        $this->assertDoesNotMatchRegularExpression(
+            '/onclick=["\']downloadConfig\(\)["\']/',
+            $content,
+            "Download button must NOT use inline onclick (scope issues in SweetAlert modal)"
+        );
+        
+        // Must use jQuery event binding after modal renders
+        $this->assertMatchesRegularExpression(
+            '/\$\([\'"]#downloadConfigBtn[\'"]\)\.on\([\'"]click[\'"]/',
+            $content,
+            "Download button must use jQuery .on('click') binding after modal renders"
         );
     }
     
