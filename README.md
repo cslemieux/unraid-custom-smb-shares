@@ -177,17 +177,36 @@ composer test:e2e
 ### Building
 
 ```bash
-# Build .txz package
+# Build .txz package (auto-increments version if same day)
 ./build.sh
+
+# Fast build (skip tests)
+./build.sh --fast
 
 # Deploy to test server
 ./deploy.sh
 ```
 
+### Release Process
+
+1. Build: `./build.sh --fast`
+2. Update `.plg` with version and MD5 from build output
+3. Commit and push: `git add -A && git commit -m "Release vX.X.X" && git push`
+4. Tag: `git tag -a "vX.X.X" -m "Release" && git push origin vX.X.X`
+5. Create GitHub release with `.txz` attached
+
+**Note:** Build script auto-increments version suffix (a, b, c...) for same-day builds.
+
 ## Changelog
 
-### v1.0.0 (2024-12-14)
-- Initial release
+### v2025.12.14b
+- Fix package installation (use installpkg instead of upgradepkg)
+- Add auto-increment versioning for same-day releases
+
+### v2025.12.14a
+- Add auto-increment versioning to build script
+
+### v2025.12.14 (Initial Release)
 - Full share CRUD operations
 - Enable/disable toggle with loading states
 - Clone share functionality
