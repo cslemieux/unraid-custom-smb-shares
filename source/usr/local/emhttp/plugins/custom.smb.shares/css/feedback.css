@@ -1,6 +1,5 @@
 .notification {
     position: fixed;
-    top: 20px;
     right: 20px;
     padding: 15px 20px;
     border-radius: 4px;
@@ -25,6 +24,10 @@
 
 .notification-error {
     background-color: #f44336;
+}
+
+.notification-warning {
+    background-color: #ff9800;
 }
 
 button:disabled, input[type="submit"]:disabled {

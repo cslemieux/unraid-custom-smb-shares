@@ -46,6 +46,9 @@ $enabled = $settings['SERVICE'] === 'enabled';
 $backupCount = $settings['BACKUP_COUNT'];
 ?>
 
+<link rel="stylesheet" href="/plugins/custom.smb.shares/css/feedback.css">
+<script src="/plugins/custom.smb.shares/js/feedback.js"></script>
+
 <style>
 .backup-table { width: 100%; margin-top: 10px; }
 .backup-table th { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-color); }
@@ -112,12 +115,14 @@ function restoreBackup(filename) {
         if (confirmed) {
             $.post('/plugins/custom.smb.shares/api.php', { action: 'restoreBackup', filename: filename }, function(response) {
                 if (response.success) {
-                    swal('_(Success)_', '_(Backup restored. Reload the shares page to see changes.)_', 'success');
+                    showSuccess('_(Backup restored successfully)_');
                     loadBackups();
                 } else {
-                    swal('_(Error)_', response.error, 'error');
+                    showError(response.error || '_(Failed to restore backup)_');
                 }
-            }, 'json');
+            }, 'json').fail(function() {
+                showError('_(Failed to restore backup)_');
+            });
         }
     });
 }
@@ -134,11 +139,14 @@ function deleteBackup(filename) {
         if (confirmed) {
             $.post('/plugins/custom.smb.shares/api.php', { action: 'deleteBackup', filename: filename }, function(response) {
                 if (response.success) {
+                    showSuccess('_(Backup deleted)_');
                     loadBackups();
                 } else {
-                    swal('_(Error)_', response.error, 'error');
+                    showError(response.error || '_(Failed to delete backup)_');
                 }
-            }, 'json');
+            }, 'json').fail(function() {
+                showError('_(Failed to delete backup)_');
+            });
         }
     });
 }
@@ -146,12 +154,14 @@ function deleteBackup(filename) {
 function createBackup() {
     $.post('/plugins/custom.smb.shares/api.php', { action: 'createBackup' }, function(response) {
         if (response.success) {
-            swal('_(Success)_', '_(Backup created successfully)_', 'success');
+            showSuccess('_(Backup created: )_' + response.filename);
             loadBackups();
         } else {
-            swal('_(Error)_', response.error || '_(Failed to create backup)_', 'error');
+            showError(response.error || '_(Failed to create backup)_');
         }
-    }, 'json');
+    }, 'json').fail(function() {
+        showError('_(Failed to create backup)_');
+    });
 }
 
 $(function() {

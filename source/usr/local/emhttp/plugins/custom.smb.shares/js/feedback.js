@@ -1,12 +1,19 @@
 /**
- * Show notification message
+ * Show notification message with stacking support
  * @param {string} message - Message to display
- * @param {string} type - Notification type ('success' or 'error')
+ * @param {string} type - Notification type ('success', 'error', or 'warning')
  */
 function showNotification(message, type)
 {
+    // Calculate top position based on existing notifications
+    var topOffset = 20;
+    $('.notification').each(function() {
+        topOffset += $(this).outerHeight() + 10;
+    });
+    
     var notification = $('<div class="notification notification-' + type + '"></div>');
     notification.text(message);
+    notification.css('top', topOffset + 'px');
     $('body').append(notification);
 
     setTimeout(function () {
@@ -17,8 +24,22 @@ function showNotification(message, type)
         notification.removeClass('show');
         setTimeout(function () {
             notification.remove();
+            // Reposition remaining notifications
+            repositionNotifications();
         }, 300);
     }, 3000);
+}
+
+/**
+ * Reposition notifications after one is removed
+ */
+function repositionNotifications()
+{
+    var topOffset = 20;
+    $('.notification').each(function() {
+        $(this).css('top', topOffset + 'px');
+        topOffset += $(this).outerHeight() + 10;
+    });
 }
 
 /**
@@ -37,4 +58,13 @@ function showSuccess(message)
 function showError(message)
 {
     showNotification(message, 'error');
+}
+
+/**
+ * Show warning notification
+ * @param {string} message - Warning message
+ */
+function showWarning(message)
+{
+    showNotification(message, 'warning');
 }

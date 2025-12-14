@@ -22,6 +22,7 @@ try {
         'name' => $_POST['name'] ?? '',
         'path' => $_POST['path'] ?? '',
         'comment' => $_POST['comment'] ?? '',
+        'enabled' => ($_POST['enabled'] ?? 'yes') === 'yes',
         'export' => $_POST['export'] ?? 'e',
         'volsizelimit' => $_POST['volsizelimit'] ?? '',
         'case_sensitive' => $_POST['case_sensitive'] ?? 'auto',

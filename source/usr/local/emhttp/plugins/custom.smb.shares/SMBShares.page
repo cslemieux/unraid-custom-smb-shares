@@ -23,17 +23,24 @@ $sambaRunning = $sambaStatus['running'];
 ?>
 
 <link rel="stylesheet" href="/plugins/custom.smb.shares/css/feedback.css">
+<link rel="stylesheet" href="/webGui/styles/jquery.switchbutton.css">
 <script src="/plugins/custom.smb.shares/js/feedback.js"></script>
+<script src="/webGui/javascript/jquery.switchbutton.js"></script>
 
 <style>
 .custom-shares-table { table-layout: fixed; }
-.custom-shares-table th:nth-child(1) { width: 140px; }  /* Share Name */
-.custom-shares-table th:nth-child(4) { width: 80px; }   /* Export */
-.custom-shares-table th:nth-child(5) { width: 80px; }   /* Security */
-.custom-shares-table th:nth-child(6) { width: 120px; text-align: right; }  /* Actions */
+.custom-shares-table th:nth-child(1) { width: 70px; }   /* Enable */
+.custom-shares-table th:nth-child(2) { width: 140px; }  /* Share Name */
+.custom-shares-table th:nth-child(5) { width: 90px; }   /* Features */
+.custom-shares-table th:nth-child(6) { width: 100px; }  /* Security */
+.custom-shares-table th:nth-child(7) { width: 120px; text-align: right; }  /* Actions */
 .custom-shares-table td:last-child { text-align: right; }
 .disabled-banner { background: #f0ad4e; color: #000; padding: 10px 15px; margin-bottom: 15px; border-radius: 4px; }
 .disabled-banner a { color: #000; text-decoration: underline; }
+.share-disabled { opacity: 0.5; }
+.feature-icons { white-space: nowrap; }
+.feature-icons i { margin-right: 4px; }
+.feature-icons i[title] { cursor: help; }
 </style>
 
 <?php if (!$pluginEnabled): ?>
@@ -65,10 +72,11 @@ $sambaRunning = $sambaStatus['running'];
 <table class="tablesorter shift custom-shares-table">
 <thead>
 <tr>
+    <th>_(Enable)_</th>
     <th>_(Share Name)_</th>
     <th>_(Path)_</th>
     <th>_(Comment)_</th>
-    <th>_(Export)_</th>
+    <th>_(Features)_</th>
     <th>_(Security)_</th>
     <th>_(Actions)_</th>
 </tr>
@@ -76,45 +84,54 @@ $sambaRunning = $sambaStatus['running'];
 <tbody>
 <?php if (empty($shares)): ?>
 <tr>
-    <td colspan="6" style="text-align:center;padding:20px;">
+    <td colspan="7" style="text-align:center;padding:20px;">
         <em>_(No custom shares configured)_</em>
     </td>
 </tr>
 <?php else: ?>
 <?php foreach ($shares as $index => $share): 
-    $export = $share['export'] ?? ($share['browseable'] === 'yes' ? 'e' : '-');
-    $exportLabels = [
-        'e' => _('Yes'),
-        'eh' => _('Hidden'),
-        'et' => _('Time Machine'),
-        'eth' => _('TM Hidden'),
-        '-' => _('No')
-    ];
-    $exportLabel = $exportLabels[$export] ?? _('Yes');
-    
+    $enabled = $share['enabled'] ?? true;
+    $export = $share['export'] ?? 'e';
     $security = $share['security'] ?? 'public';
+    $fruit = ($share['fruit'] ?? 'no') === 'yes';
+    $isTimeMachine = in_array($export, ['et', 'eth'], true);
+    $isHidden = in_array($export, ['eh', 'eth'], true);
+    
     $securityLabels = [
         'public' => _('Public'),
         'secure' => _('Secure'),
         'private' => _('Private')
     ];
     $securityLabel = $securityLabels[$security] ?? _('Public');
+    $securityIcon = $security === 'private' ? 'fa-lock' : ($security === 'secure' ? 'fa-unlock-alt' : '');
 ?>
-<tr>
+<tr class="<?= $enabled ? '' : 'share-disabled' ?>">
+    <td>
+        <input type="checkbox" class="share-toggle" data-share="<?= htmlspecialchars($share['name']) ?>" <?= $enabled ? 'checked' : '' ?>>
+    </td>
     <td>
         <span class="exec" style="margin-right:8px;"><i class="fa fa-folder orange-text"></i></span>
         <span class="exec"><?= htmlspecialchars($share['name']) ?></span>
     </td>
     <td><?= htmlspecialchars($share['path']) ?></td>
     <td><?= htmlspecialchars($share['comment'] ?? '') ?></td>
-    <td>
-        <?php if ($export !== '-'): ?>
-            <i class="fa fa-check green-text"></i> <?= $exportLabel ?>
-        <?php else: ?>
-            <i class="fa fa-times grey-text"></i> _(No)_
+    <td class="feature-icons">
+        <?php if ($fruit || $isTimeMachine): ?>
+            <i class="fa fa-apple" title="<?= _('macOS support enabled') ?>"></i>
+        <?php endif; ?>
+        <?php if ($isTimeMachine): ?>
+            <i class="fa fa-clock-o" title="<?= _('Time Machine backup') ?>"></i>
+        <?php endif; ?>
+        <?php if ($isHidden): ?>
+            <i class="fa fa-eye-slash" title="<?= _('Hidden share') ?>"></i>
         <?php endif; ?>
     </td>
-    <td><?= $securityLabel ?></td>
+    <td>
+        <?php if ($securityIcon): ?>
+            <i class="fa <?= $securityIcon ?>"></i>
+        <?php endif; ?>
+        <?= $securityLabel ?>
+    </td>
     <td>
         <a href="/SMBSharesUpdate?name=<?= urlencode($share['name']) ?>"><i class="fa fa-edit"></i> _(Edit)_</a>
         <span style="margin:0 5px;">|</span>
@@ -132,6 +149,38 @@ $sambaRunning = $sambaStatus['running'];
 </div>
 
 <script>
+$(function() {
+    // Initialize toggle switches
+    $('.share-toggle').switchButton({
+        on_label: '',
+        off_label: '',
+        checked: function() { return $(this).is(':checked'); }
+    }).on('change', function() {
+        var $toggle = $(this);
+        var shareName = $toggle.data('share');
+        var enabled = $toggle.is(':checked');
+        var $row = $toggle.closest('tr');
+        
+        $.post('/plugins/custom.smb.shares/api.php', {
+            action: 'toggleShare',
+            name: shareName,
+            enabled: enabled ? 'true' : 'false'
+        }, function(response) {
+            if (response.success) {
+                $row.toggleClass('share-disabled', !response.enabled);
+                showSuccess(enabled ? '_(Share enabled)_' : '_(Share disabled)_');
+            } else {
+                // Revert toggle on error
+                $toggle.prop('checked', !enabled).trigger('change.switchButton');
+                showError(response.error || '_(Failed to toggle share)_');
+            }
+        }, 'json').fail(function() {
+            $toggle.prop('checked', !enabled).trigger('change.switchButton');
+            showError('_(Failed to toggle share)_');
+        });
+    });
+});
+
 function deleteShare(shareName) {
     swal({
         title: "_(Confirm Delete)_",

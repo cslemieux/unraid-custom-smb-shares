@@ -109,6 +109,14 @@ $showUserAccess = in_array($security, ['secure', 'private']);
 
 <div class="title"><span class="left inline-flex flex-row items-center gap-1"><i class="fa fa-folder title"></i>_(Share Settings)_</span><span class="right"></span></div>
 <div markdown="1" class="shade">
+_(Enabled)_:
+: <select name="enabled">
+<?=mk_option(($share['enabled'] ?? true) ? 'yes' : 'no', 'yes', _('Yes'))?>
+<?=mk_option(($share['enabled'] ?? true) ? 'yes' : 'no', 'no', _('No'))?>
+</select>
+
+> When disabled, this share will not be included in the Samba configuration.
+
 _(Share Name)_:
 : <input type="text" name="name" value="<?=htmlspecialchars($share['name'] ?? '')?>" maxlength="40" required <?=$isNew ? '' : 'readonly'?>>
 
@@ -416,8 +424,15 @@ function prepareForm(form) {
     $.post($form.attr('action'), $form.serialize())
         .done(function(response) {
             if (response.success) {
-                // Redirect to main plugin page
-                location.href = '/SMBShares';
+                // Show appropriate toast based on verification status
+                if (response.verified) {
+                    showSuccess(response.message || '<?=_("Share saved and Samba reloaded")?>');
+                } else {
+                    showWarning(response.message || '<?=_("Share saved but Samba reload failed")?>');
+                }
+                setTimeout(function() {
+                    location.href = '/SMBShares';
+                }, 1500);
             } else {
                 swal({title: "<?=_('Error')?>", text: response.error || "<?=_('Unknown error')?>", type: 'error'});
                 $submitBtn.val(originalText).prop('disabled', false);

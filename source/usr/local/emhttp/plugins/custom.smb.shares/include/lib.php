@@ -350,6 +350,11 @@ function generateSambaConfig(array $shares): string
 {
     $config = '';
     foreach ($shares as $share) {
+        // Skip disabled shares
+        if (isset($share['enabled']) && $share['enabled'] === false) {
+            continue;
+        }
+
         // Handle export field - skip if not exported
         $export = $share['export'] ?? 'e';
         if ($export === '-') {
