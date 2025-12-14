@@ -135,6 +135,8 @@ $sambaRunning = $sambaStatus['running'];
     <td>
         <a href="/SMBSharesUpdate?name=<?= urlencode($share['name']) ?>"><i class="fa fa-edit"></i> _(Edit)_</a>
         <span style="margin:0 5px;">|</span>
+        <a href="#" onclick="cloneShare('<?= htmlspecialchars($share['name']) ?>'); return false;"><i class="fa fa-clone"></i> _(Clone)_</a>
+        <span style="margin:0 5px;">|</span>
         <a href="#" onclick="deleteShare('<?= htmlspecialchars($share['name']) ?>'); return false;"><i class="fa fa-trash"></i> _(Delete)_</a>
     </td>
 </tr>
@@ -160,12 +162,21 @@ $(function() {
         var shareName = $toggle.data('share');
         var enabled = $toggle.is(':checked');
         var $row = $toggle.closest('tr');
+        var $wrapper = $toggle.closest('.switch-button-background');
+        
+        // Disable toggle and show loading state
+        $toggle.prop('disabled', true);
+        $wrapper.addClass('loading').css('opacity', '0.6');
         
         $.post('/plugins/custom.smb.shares/api.php', {
             action: 'toggleShare',
             name: shareName,
             enabled: enabled ? 'true' : 'false'
         }, function(response) {
+            // Re-enable toggle
+            $toggle.prop('disabled', false);
+            $wrapper.removeClass('loading').css('opacity', '');
+            
             if (response.success) {
                 $row.toggleClass('share-disabled', !response.enabled);
                 showSuccess(enabled ? '_(Share enabled)_' : '_(Share disabled)_');
@@ -175,6 +186,10 @@ $(function() {
                 showError(response.error || '_(Failed to toggle share)_');
             }
         }, 'json').fail(function() {
+            // Re-enable toggle
+            $toggle.prop('disabled', false);
+            $wrapper.removeClass('loading').css('opacity', '');
+            
             $toggle.prop('checked', !enabled).trigger('change.switchButton');
             showError('_(Failed to toggle share)_');
         });
@@ -218,6 +233,11 @@ function reloadSamba() {
         showError("_(Failed to reload Samba)_");
         $('#reloadBtn').prop('disabled', false).val('_(Reload Samba)_');
     });
+}
+
+function cloneShare(shareName) {
+    // Redirect to Add page with clone parameter
+    location.href = '/SMBSharesAdd?clone=' + encodeURIComponent(shareName);
 }
 
 function importConfig() {

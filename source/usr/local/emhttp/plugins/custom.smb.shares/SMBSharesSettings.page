@@ -152,7 +152,11 @@ function deleteBackup(filename) {
 }
 
 function createBackup() {
+    var $btn = $('input[value="_(Create Backup Now)_"]');
+    $btn.prop('disabled', true).val('_(Creating...)_');
+    
     $.post('/plugins/custom.smb.shares/api.php', { action: 'createBackup' }, function(response) {
+        $btn.prop('disabled', false).val('_(Create Backup Now)_');
         if (response.success) {
             showSuccess('_(Backup created: )_' + response.filename);
             loadBackups();
@@ -160,6 +164,7 @@ function createBackup() {
             showError(response.error || '_(Failed to create backup)_');
         }
     }, 'json').fail(function() {
+        $btn.prop('disabled', false).val('_(Create Backup Now)_');
         showError('_(Failed to create backup)_');
     });
 }

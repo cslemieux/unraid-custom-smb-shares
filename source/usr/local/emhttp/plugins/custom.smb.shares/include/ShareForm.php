@@ -9,12 +9,16 @@ global $var, $docroot; // For CSRF token and docroot - provided by Unraid's page
 require_once "$docroot/plugins/custom.smb.shares/include/lib.php";
 
 $shareName = $_GET['name'] ?? '';
+$cloneName = $_GET['clone'] ?? '';
 $shares = loadShares();
 
-// Find share by name
+// Find share by name (for edit) or clone source
 $share = [];
 $shareIndex = -1;
+$isClone = false;
+
 if ($shareName) {
+    // Edit mode - find existing share
     foreach ($shares as $idx => $s) {
         if ($s['name'] === $shareName) {
             $share = $s;
@@ -22,9 +26,28 @@ if ($shareName) {
             break;
         }
     }
+} elseif ($cloneName) {
+    // Clone mode - find source share and copy settings
+    foreach ($shares as $s) {
+        if ($s['name'] === $cloneName) {
+            $share = $s;
+            // Generate unique clone name
+            $baseName = $cloneName . '-copy';
+            $newName = $baseName;
+            $counter = 1;
+            $existingNames = array_column($shares, 'name');
+            while (in_array($newName, $existingNames)) {
+                $counter++;
+                $newName = $baseName . $counter;
+            }
+            $share['name'] = $newName;
+            $isClone = true;
+            break;
+        }
+    }
 }
 
-$isNew = empty($share);
+$isNew = empty($shareName) && !$isClone;
 $security = $share['security'] ?? 'public';
 $showUserAccess = in_array($security, ['secure', 'private']);
 ?>
@@ -102,7 +125,7 @@ $showUserAccess = in_array($security, ['secure', 'private']);
 }
 </style>
 
-<form markdown="1" method="POST" action="/plugins/custom.smb.shares/<?=$isNew ? 'add' : 'update'?>.php" onsubmit="return prepareForm(this)">
+<form markdown="1" method="POST" action="/plugins/custom.smb.shares/<?=($isNew || $isClone) ? 'add' : 'update'?>.php" onsubmit="return prepareForm(this)">
 <input type="hidden" name="csrf_token" value="<?=$var['csrf_token']?>">
 <input type="hidden" name="original_name" value="<?=htmlspecialchars($share['name'] ?? '')?>">
 <input type="hidden" name="user_access" value="<?=htmlspecialchars($share['user_access'] ?? '{}')?>">
@@ -118,7 +141,7 @@ _(Enabled)_:
 > When disabled, this share will not be included in the Samba configuration.
 
 _(Share Name)_:
-: <input type="text" name="name" value="<?=htmlspecialchars($share['name'] ?? '')?>" maxlength="40" required <?=$isNew ? '' : 'readonly'?>>
+: <input type="text" name="name" value="<?=htmlspecialchars($share['name'] ?? '')?>" maxlength="40" required <?=(!$isNew && !$isClone) ? 'readonly' : ''?>>
 
 > The share name can be up to 40 characters. This name will be visible when browsing the network.
 >
@@ -258,7 +281,7 @@ _(Hosts deny)_:
 
 &nbsp;
 : <span class="inline-block">
-    <input type="submit" value="<?=$isNew ? _('Add Share') : _('Apply')?>" onclick="this.value='<?=$isNew ? _('Adding...') : _('Applying...')?>'">
+    <input type="submit" value="<?=($isNew || $isClone) ? _('Add Share') : _('Apply')?>" onclick="this.value='<?=($isNew || $isClone) ? _('Adding...') : _('Applying...')?>'">
     <input type="button" value="_(Done)_" onclick="done()">
   </span>
 
