@@ -38,6 +38,10 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       
+      - name: Get MD5 checksum
+        id: md5
+        run: echo "MD5=$(cat archive/*.md5)" >> $GITHUB_OUTPUT
+      
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -55,7 +59,7 @@ jobs:
             
             ### Checksums
             ```
-            $(cat archive/*.md5)
+            ${{ steps.md5.outputs.MD5 }}  custom.smb.shares-${{ steps.version.outputs.VERSION }}-x86_64-1.txz
             ```
           files: |
             archive/*.txz
