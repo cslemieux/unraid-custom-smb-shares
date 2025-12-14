@@ -157,6 +157,60 @@ function saveShares(array $shares, ?string $configBase = null)
 }
 
 /**
+ * Create a timestamped backup of shares.json
+ * @param string|null $configBase
+ * @return string|false Path to backup file, or false on failure
+ */
+function backupShares(?string $configBase = null)
+{
+    $base = $configBase ?? ConfigRegistry::getConfigBase();
+    $file = $base . '/plugins/custom.smb.shares/shares.json';
+    
+    if (!file_exists($file)) {
+        return false;
+    }
+    
+    $backupDir = $base . '/plugins/custom.smb.shares/backups';
+    if (!is_dir($backupDir)) {
+        mkdir($backupDir, 0755, true);
+    }
+    
+    $timestamp = date('Y-m-d_H-i-s');
+    $backupFile = $backupDir . '/shares_' . $timestamp . '.json';
+    
+    if (copy($file, $backupFile)) {
+        // Keep only last 10 backups
+        pruneBackups($backupDir, 10);
+        return $backupFile;
+    }
+    return false;
+}
+
+/**
+ * Remove old backups, keeping only the most recent $keep files
+ * @param string $backupDir
+ * @param int $keep
+ */
+function pruneBackups(string $backupDir, int $keep): void
+{
+    $files = glob($backupDir . '/shares_*.json');
+    if ($files === false || count($files) <= $keep) {
+        return;
+    }
+    
+    // Sort by modification time, oldest first
+    usort($files, function ($a, $b) {
+        return filemtime($a) - filemtime($b);
+    });
+    
+    // Remove oldest files
+    $toRemove = count($files) - $keep;
+    for ($i = 0; $i < $toRemove; $i++) {
+        unlink($files[$i]);
+    }
+}
+
+/**
  * @param array<int, array<string, mixed>> $shares
  * @param string $name
  * @return int

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 header('Content-Type: application/json');
 
-$action = $_GET['action'] ?? '';
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 if ($action === 'getUsers') {
     $users = [];
@@ -145,8 +145,23 @@ if ($action === 'importConfig') {
         }
     }
 
+    // Backup existing config before overwriting
+    backupShares();
+    
     saveShares($shares);
     echo json_encode(['success' => true, 'message' => 'Configuration imported successfully']);
+    exit;
+}
+
+if ($action === 'reloadSamba') {
+    require_once __DIR__ . '/include/lib.php';
+    $result = reloadSamba();
+    if ($result) {
+        echo json_encode(['success' => true, 'message' => 'Samba reloaded successfully']);
+    } else {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Failed to reload Samba']);
+    }
     exit;
 }
 

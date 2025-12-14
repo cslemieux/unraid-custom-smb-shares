@@ -45,8 +45,14 @@ class APIActionParityTest extends TestCase
         foreach ($pageFiles as $file) {
             $content = file_get_contents($file);
             
-            // Match patterns like: api.php?action=actionName
+            // Match patterns like: api.php?action=actionName (GET)
             preg_match_all('/api\.php\?action=([a-zA-Z]+)/', $content, $matches);
+            foreach ($matches[1] as $action) {
+                $calls[$action] = basename($file);
+            }
+            
+            // Match patterns like: { action: 'actionName' } (POST)
+            preg_match_all('/action:\s*[\'"]([a-zA-Z]+)[\'"]/', $content, $matches);
             foreach ($matches[1] as $action) {
                 $calls[$action] = basename($file);
             }
@@ -95,14 +101,35 @@ class APIActionParityTest extends TestCase
     }
     
     /**
-     * Test import action specifically
+     * Test import action specifically - JS must call importConfig (not import)
      */
     public function testImportConfigActionExists(): void
     {
         $apiActions = $this->getApiActions();
+        $jsCalls = $this->getJsApiCalls();
         
         // Verify importConfig is a valid API action
         $this->assertContains('importConfig', $apiActions, "api.php should have 'importConfig' handler");
+        
+        // JS must call importConfig, not import
+        $this->assertArrayHasKey('importConfig', $jsCalls, "JS should call 'importConfig' action");
+        $this->assertArrayNotHasKey('import', $jsCalls, "JS should NOT call 'import' action (use 'importConfig')");
+    }
+    
+    /**
+     * Test that import creates backup before overwriting
+     */
+    public function testImportCreatesBackup(): void
+    {
+        $apiFile = self::$pluginDir . '/api.php';
+        $content = file_get_contents($apiFile);
+        
+        // Import handler should call backupShares before saveShares
+        $this->assertMatchesRegularExpression(
+            '/importConfig.*backupShares.*saveShares/s',
+            $content,
+            "Import should backup before saving"
+        );
     }
     
     /**

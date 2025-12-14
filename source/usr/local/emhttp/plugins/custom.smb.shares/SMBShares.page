@@ -215,7 +215,7 @@ function importConfig() {
 function doImport(content) {
     try {
         JSON.parse(content);
-        $.post('/plugins/custom.smb.shares/api.php', { action: 'import', config: content }, function(response) {
+        $.post('/plugins/custom.smb.shares/api.php', { action: 'importConfig', config: content }, function(response) {
             if (response.success) {
                 swal.close();
                 showSuccess("_(Configuration imported successfully)_");
