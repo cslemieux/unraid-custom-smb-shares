@@ -198,7 +198,7 @@ function importConfig() {
 }
 
 function exportConfig() {
-    $.get('/plugins/custom.smb.shares/api.php?action=export', function(response) {
+    $.get('/plugins/custom.smb.shares/api.php?action=exportConfig', function(response) {
         if (response.success) {
             swal({
                 title: "_(Export Configuration)_",

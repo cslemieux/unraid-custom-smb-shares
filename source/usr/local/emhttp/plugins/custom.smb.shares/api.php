@@ -113,14 +113,14 @@ if ($action === 'getShare') {
 }
 
 if ($action === 'exportConfig') {
-    require_once '/usr/local/emhttp/plugins/custom.smb.shares/include/lib.php';
+    require_once __DIR__ . '/include/lib.php';
     $shares = loadShares();
-    echo json_encode($shares);
+    echo json_encode(['success' => true, 'config' => $shares]);
     exit;
 }
 
 if ($action === 'importConfig') {
-    require_once '/usr/local/emhttp/plugins/custom.smb.shares/include/lib.php';
+    require_once __DIR__ . '/include/lib.php';
     $input = file_get_contents('php://input');
     if ($input === false) {
         http_response_code(400);
