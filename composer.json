@@ -1,6 +1,7 @@
 {
     "name": "custom-smb-shares/unraid-plugin",
     "description": "Custom SMB Shares Manager for Unraid",
+    "license": "MIT",
     "type": "project",
     "config": {
         "process-timeout": 600
