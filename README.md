@@ -199,6 +199,26 @@ composer test:e2e
 
 ## Changelog
 
+### v2026.01.19
+- Fix user access permissions not saving correctly
+- Add comprehensive security settings test pyramid (57 new tests)
+- Remove `.kiro/` directory from public releases
+
+### v2025.12.14f
+- CI/CD improvements and dependency updates
+
+### v2025.12.14e
+- CI workflow fixes
+
+### v2025.12.14d
+- CI improvements
+
+### v2025.12.14c
+- Security: Samba config injection prevention
+- Security: TOCTOU symlink race fix
+- Code quality improvements and refactoring
+- Add concurrent modification tests
+
 ### v2025.12.14b
 - Fix package installation (use installpkg instead of upgradepkg)
 - Add auto-increment versioning for same-day releases
