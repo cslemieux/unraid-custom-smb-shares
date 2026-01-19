@@ -39,6 +39,29 @@ if [ "$BRANCH" != "main" ]; then
     fi
 fi
 
+# Check CI status on public repo before releasing
+echo -e "${GREEN}Checking CI status...${NC}"
+LATEST_CI_RUN=$(gh run list --repo cslemieux/unraid-custom-smb-shares --workflow=CI --limit 1 --json status,conclusion,headBranch 2>/dev/null)
+if [ -n "$LATEST_CI_RUN" ]; then
+    CI_STATUS=$(echo "$LATEST_CI_RUN" | jq -r '.[0].conclusion // "unknown"')
+    CI_BRANCH=$(echo "$LATEST_CI_RUN" | jq -r '.[0].headBranch // "unknown"')
+    if [ "$CI_STATUS" = "failure" ] && [ "$CI_BRANCH" = "main" ]; then
+        echo -e "${RED}Error: CI is failing on main branch!${NC}"
+        echo "Fix CI issues before releasing."
+        echo ""
+        echo "Check CI status: gh run list --repo cslemieux/unraid-custom-smb-shares --limit 5"
+        read -p "Release anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    elif [ "$CI_STATUS" = "success" ]; then
+        echo -e "${GREEN}✓ CI passing on main${NC}"
+    else
+        echo -e "${YELLOW}CI status: $CI_STATUS (branch: $CI_BRANCH)${NC}"
+    fi
+fi
+
 # Fetch latest from both remotes
 echo -e "${GREEN}Fetching from remotes...${NC}"
 git fetch origin
@@ -82,6 +105,11 @@ git checkout -b release-temp
 
 # Soft reset to public/main to stage all changes
 git reset --soft public/main
+
+# Remove files that should not be in public repo
+echo -e "${GREEN}Excluding private files from release...${NC}"
+git reset HEAD -- .kiro/ 2>/dev/null || true
+git checkout -- .kiro/ 2>/dev/null || true
 
 # Commit with the release message
 git commit -m "$FULL_MESSAGE"

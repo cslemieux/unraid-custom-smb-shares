@@ -729,3 +729,63 @@ function ensureSambaInclude(): bool
     logInfo("Added include directive for custom SMB shares to smb-extra.conf");
     return true;
 }
+
+
+/**
+ * Get system users for SMB access configuration
+ * Returns users that can be assigned SMB share access (uid >= 1000)
+ * @return array<int, array{name: string, uid: int}> Array of user info
+ */
+function getSystemUsers(): array
+{
+    $users = [];
+
+    // In test mode, check for mock users file first
+    if (TestModeDetector::isTestMode()) {
+        $harnessRoot = TestModeDetector::getHarnessRoot();
+        $mockUsersFile = $harnessRoot . '/boot/config/plugins/custom.smb.shares/users.json';
+        if (file_exists($mockUsersFile)) {
+            $content = file_get_contents($mockUsersFile);
+            if ($content !== false) {
+                $mockUsers = json_decode($content, true);
+                if (is_array($mockUsers)) {
+                    return $mockUsers;
+                }
+            }
+        }
+    }
+
+    // Read /etc/passwd for system users
+    $passwdFile = '/etc/passwd';
+    if (!file_exists($passwdFile)) {
+        return [];
+    }
+
+    $passwd = file($passwdFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($passwd === false) {
+        return [];
+    }
+
+    foreach ($passwd as $line) {
+        $parts = explode(':', $line);
+        if (count($parts) < 7) {
+            continue;
+        }
+
+        $username = $parts[0];
+        $uid = (int)$parts[2];
+
+        // Include users with uid >= 1000 (regular users on Unraid)
+        if ($uid >= 1000) {
+            $users[] = [
+                'name' => $username,
+                'uid' => $uid
+            ];
+        }
+    }
+
+    // Sort by username
+    usort($users, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+
+    return $users;
+}

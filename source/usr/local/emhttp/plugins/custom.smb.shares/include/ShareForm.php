@@ -192,9 +192,28 @@ _(Security)_:
 
 <div class="title" id="user-access-title" style="display:<?=$showUserAccess ? 'flex' : 'none'?>"><span class="left inline-flex flex-row items-center gap-1"><i class="fa fa-user title"></i>_(SMB User Access)_</span><span class="right"></span></div>
 <div markdown="1" class="shade" id="user-access-section" style="display:<?=$showUserAccess ? 'block' : 'none'?>">
-<div id="userAccessList" class="user-access-list">
-<p><em>_(Loading users...)_</em></p>
-</div>
+<?php
+$users = getSystemUsers();
+$currentAccess = json_decode($share['user_access'] ?? '{}', true) ?: [];
+$defaultAccess = ($security === 'secure') ? 'read-only' : 'no-access';
+
+if (empty($users)) : ?>
+<p><em>_(No users found on system)_</em></p>
+<?php else : ?>
+<dl>
+    <?php foreach ($users as $user) :
+        $userName = htmlspecialchars($user['name']);
+        $access = $currentAccess[$user['name']] ?? $defaultAccess;
+        ?>
+<dt><?=$userName?></dt>
+<dd><select name="access_<?=$userName?>" data-user="<?=$userName?>">
+        <?=mk_option($access, 'no-access', _('No Access'))?>
+        <?=mk_option($access, 'read-only', _('Read-only'))?>
+        <?=mk_option($access, 'read-write', _('Read/Write'))?>
+</select></dd>
+    <?php endforeach; ?>
+</dl>
+<?php endif; ?>
 </div>
 
 <div class="title advanced"><span class="left inline-flex flex-row items-center gap-1"><i class="fa fa-cog title"></i>_(Advanced Settings)_</span><span class="right"></span></div>
@@ -359,68 +378,7 @@ function toggleSecurityMode(select) {
     var showUserAccess = (mode === 'secure' || mode === 'private');
     $('#user-access-title').toggle(showUserAccess);
     $('#user-access-section').toggle(showUserAccess);
-    if (showUserAccess) {
-        populateUserAccess(mode);
-    }
-}
-
-function populateUserAccess(mode) {
-    var $container = $('#userAccessList');
-    var currentAccess = {};
-    
-    try {
-        currentAccess = JSON.parse($('input[name="user_access"]').val() || '{}');
-    } catch (e) {
-        currentAccess = {};
-    }
-    
-    $container.html('<p><em><?=_("Loading users...")?></em></p>');
-    
-    $.get('/plugins/custom.smb.shares/get-users.php')
-        .done(function(response) {
-            if (!response.success || !response.users) {
-                $container.html('<p class="error"><?=_("Failed to load users")?></p>');
-                return;
-            }
-            
-            if (response.users.length === 0) {
-                $container.html('<p><em><?=_("No users found on system")?></em></p>');
-                return;
-            }
-            
-            var defaultAccess = (mode === 'secure') ? 'read-only' : 'no-access';
-            var html = '<dl>';
-            response.users.forEach(function(user) {
-                var access = currentAccess[user.name] || defaultAccess;
-                html += '<dt>' + user.name + '</dt>';
-                html += '<dd><select name="access_' + user.name + '" data-user="' + user.name + '" onchange="updateUserAccess(this)">';
-                html += '<option value="no-access"' + (access === 'no-access' ? ' selected' : '') + '><?=_("No Access")?></option>';
-                html += '<option value="read-only"' + (access === 'read-only' ? ' selected' : '') + '><?=_("Read-only")?></option>';
-                html += '<option value="read-write"' + (access === 'read-write' ? ' selected' : '') + '><?=_("Read/Write")?></option>';
-                html += '</select></dd>';
-            });
-            html += '</dl>';
-            
-            $container.html(html);
-        })
-        .fail(function() {
-            $container.html('<p class="error"><?=_("Failed to load users")?></p>');
-        });
-}
-
-function updateUserAccess(select) {
-    var $select = $(select);
-    var $hidden = $('input[name="user_access"]');
-    var access = {};
-    
-    try {
-        access = JSON.parse($hidden.val() || '{}');
-    } catch (e) {
-        access = {};
-    }
-    
-    access[$select.data('user')] = $select.val();
-    $hidden.val(JSON.stringify(access));
+    // User access dropdowns are now server-side rendered, values collected at submit time
 }
 
 function prepareForm(form) {
@@ -437,8 +395,18 @@ function prepareForm(form) {
         return false;
     }
     
-    // Submit via AJAX
+    // Collect user access values from dropdowns into hidden field
     var $form = $(form);
+    var userAccess = {};
+    $form.find('select[name^="access_"]').each(function() {
+        var userName = $(this).data('user');
+        if (userName) {
+            userAccess[userName] = $(this).val();
+        }
+    });
+    $form.find('input[name="user_access"]').val(JSON.stringify(userAccess));
+    
+    // Submit via AJAX
     var $submitBtn = $form.find('input[type="submit"]');
     var originalText = $submitBtn.val();
     
@@ -526,11 +494,7 @@ $(function() {
         }
     });
     
-    // Initialize security mode
-    var security = $('select[name="security"]').val();
-    if (security === 'secure' || security === 'private') {
-        populateUserAccess(security);
-    }
+    // User access dropdowns are now server-side rendered, no initialization needed
     
     // Initialize permission checkboxes from current values
     octalToCheckboxes($('input[name="create_mask"]').val() || '0664', 'create_mask');

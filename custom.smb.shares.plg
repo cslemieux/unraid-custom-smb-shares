@@ -3,11 +3,11 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "custom.smb.shares">
 <!ENTITY author    "cslemieux">
-<!ENTITY version   "2025.12.14c">
+<!ENTITY version   "2026.01.19">
 <!ENTITY launch    "SMBShares">
 <!ENTITY github    "cslemieux/unraid-custom-smb-shares">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY md5       "bacaaedd44de94cc6cba0166067f9248">
+<!ENTITY md5       "d16df604025b6b0bbab5e0173058cd3c">
 <!ENTITY plugdir   "/usr/local/emhttp/plugins/&name;">
 <!ENTITY plgPATH   "/boot/config/plugins/&name;">
 ]>
@@ -18,11 +18,30 @@
         launch="&launch;" 
         pluginURL="&pluginURL;"
         min="6.12.0"
-        support="https://github.com/&github;/issues"
+        support="https://forums.unraid.net/topic/195826-plugin-custom-smb-shares/"
         icon="share-alt">
 
 <CHANGES>
 ##&name;
+
+###2026.01.19
+- Fix: User access permissions now save correctly
+- Test: Add comprehensive test pyramid for SMB security settings (57 new tests)
+- Test: Unit tests for security config builders
+- Test: Integration tests for save/load cycle
+- Test: E2E tests for UI interactions
+- Tests: 344 tests, 832 assertions - all passing
+
+###2025.12.14f
+- CI: Add CI status check to release script
+- Support: Add forum support thread
+
+###2025.12.14e
+- CI: Install dev dependencies in build job for linting
+
+###2025.12.14d
+- CI: Limit test coverage to unit/integration (skip E2E in CI)
+- CI: Add MIT license to composer.json
 
 ###2025.12.14c
 - Security: Prevent Samba config injection via newlines in share fields
