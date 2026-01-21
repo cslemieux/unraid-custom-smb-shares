@@ -80,7 +80,9 @@ class SambaInteractionTest extends TestCase
                 'path' => ChrootTestEnvironment::getMntPath('user/full'),
                 'comment' => 'Full featured share',
                 'security' => 'private',
-                'user_access' => json_encode(['user1' => 'read-only', 'user2' => 'read-write'])
+                'user_access' => json_encode(['user1' => 'read-only', 'user2' => 'read-write']),
+                'force_user' => 'nobody',
+                'force_group' => 'users'
             ]
         ];
         

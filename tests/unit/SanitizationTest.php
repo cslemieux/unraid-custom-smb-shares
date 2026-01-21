@@ -162,6 +162,7 @@ class SanitizationTest extends TestCase
             'name' => 'TestShare',
             'path' => '/mnt/user/test',
             'force_user' => "nobody\nforce group = root",
+            'force_group' => 'users',
             'enabled' => true
         ]];
 

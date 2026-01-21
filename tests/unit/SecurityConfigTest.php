@@ -271,8 +271,9 @@ class SecurityConfigTest extends TestCase
         $share = [];
         $config = buildPermissionConfig($share);
         
-        $this->assertStringContainsString('force user = nobody', $config);
-        $this->assertStringContainsString('force group = users', $config);
+        // force_user and force_group should NOT be in config when not set
+        $this->assertStringNotContainsString('force user', $config);
+        $this->assertStringNotContainsString('force group', $config);
         $this->assertStringContainsString('create mask = 0664', $config);
         $this->assertStringContainsString('directory mask = 0775', $config);
         $this->assertStringContainsString('hide dot files = yes', $config);

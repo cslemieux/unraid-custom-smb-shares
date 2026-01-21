@@ -557,8 +557,8 @@ function buildPrivateAccessConfig(array $userAccess): string
  */
 function buildPermissionConfig(array $share): string
 {
-    $forceUser = sanitizeForSambaConfig($share['force_user'] ?? 'nobody');
-    $forceGroup = sanitizeForSambaConfig($share['force_group'] ?? 'users');
+    $forceUser = sanitizeForSambaConfig($share['force_user'] ?? '');
+    $forceGroup = sanitizeForSambaConfig($share['force_group'] ?? '');
     $createMask = sanitizeForSambaConfig($share['create_mask'] ?? '0664');
     $directoryMask = sanitizeForSambaConfig($share['directory_mask'] ?? '0775');
     $hideDotFiles = sanitizeForSambaConfig($share['hide_dot_files'] ?? 'yes');
@@ -733,23 +733,37 @@ function ensureSambaInclude(): bool
 
 /**
  * Get system users for SMB access configuration
- * Returns users that can be assigned SMB share access (uid >= 1000)
+ * @param bool $includeSystemUsers Include system users (uid < 1000) like nobody
  * @return array<int, array{name: string, uid: int}> Array of user info
  */
-function getSystemUsers(): array
+function getSystemUsers(bool $includeSystemUsers = false): array
 {
     $users = [];
 
     // In test mode, check for mock users file first
     if (TestModeDetector::isTestMode()) {
         $harnessRoot = TestModeDetector::getHarnessRoot();
-        $mockUsersFile = $harnessRoot . '/boot/config/plugins/custom.smb.shares/users.json';
+        $suffix = $includeSystemUsers ? '-all' : '';
+        $mockUsersFile = $harnessRoot . '/boot/config/plugins/custom.smb.shares/users' . $suffix . '.json';
         if (file_exists($mockUsersFile)) {
             $content = file_get_contents($mockUsersFile);
             if ($content !== false) {
                 $mockUsers = json_decode($content, true);
                 if (is_array($mockUsers)) {
                     return $mockUsers;
+                }
+            }
+        }
+        // Fall back to regular users file if -all doesn't exist
+        if ($includeSystemUsers) {
+            $mockUsersFile = $harnessRoot . '/boot/config/plugins/custom.smb.shares/users.json';
+            if (file_exists($mockUsersFile)) {
+                $content = file_get_contents($mockUsersFile);
+                if ($content !== false) {
+                    $mockUsers = json_decode($content, true);
+                    if (is_array($mockUsers)) {
+                        return $mockUsers;
+                    }
                 }
             }
         }
@@ -775,8 +789,9 @@ function getSystemUsers(): array
         $username = $parts[0];
         $uid = (int)$parts[2];
 
-        // Include users with uid >= 1000 (regular users on Unraid)
-        if ($uid >= 1000) {
+        // Include users based on includeSystemUsers flag
+        // uid >= 1000 = regular users, uid < 1000 = system users (nobody=99, etc.)
+        if ($includeSystemUsers || $uid >= 1000) {
             $users[] = [
                 'name' => $username,
                 'uid' => $uid
@@ -788,4 +803,59 @@ function getSystemUsers(): array
     usort($users, fn($a, $b) => strcasecmp($a['name'], $b['name']));
 
     return $users;
+}
+
+/**
+ * Get system groups for SMB configuration (force group)
+ * @return array<int, array{name: string, gid: int}> Array of group info
+ */
+function getSystemGroups(): array
+{
+    $groups = [];
+
+    // In test mode, check for mock groups file first
+    if (TestModeDetector::isTestMode()) {
+        $harnessRoot = TestModeDetector::getHarnessRoot();
+        $mockGroupsFile = $harnessRoot . '/boot/config/plugins/custom.smb.shares/groups.json';
+        if (file_exists($mockGroupsFile)) {
+            $content = file_get_contents($mockGroupsFile);
+            if ($content !== false) {
+                $mockGroups = json_decode($content, true);
+                if (is_array($mockGroups)) {
+                    return $mockGroups;
+                }
+            }
+        }
+    }
+
+    // Read /etc/group for system groups
+    $groupFile = '/etc/group';
+    if (!file_exists($groupFile)) {
+        return [];
+    }
+
+    $groupData = file($groupFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($groupData === false) {
+        return [];
+    }
+
+    foreach ($groupData as $line) {
+        $parts = explode(':', $line);
+        if (count($parts) < 4) {
+            continue;
+        }
+
+        $groupname = $parts[0];
+        $gid = (int)$parts[2];
+
+        $groups[] = [
+            'name' => $groupname,
+            'gid' => $gid
+        ];
+    }
+
+    // Sort by group name
+    usort($groups, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+
+    return $groups;
 }

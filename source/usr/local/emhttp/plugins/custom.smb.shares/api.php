@@ -31,9 +31,7 @@ if ($action === 'getGroups') {
     if ($lines !== false) {
         foreach ($lines as $line) {
             $parts = explode(':', $line);
-            if (isset($parts[0])) {
-                $groups[] = '@' . $parts[0];
-            }
+            $groups[] = '@' . $parts[0];
         }
     }
     echo json_encode($groups);

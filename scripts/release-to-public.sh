@@ -29,6 +29,23 @@ if [ -n "$(git status --porcelain)" ]; then
     exit 1
 fi
 
+# Check if README changelog has been updated for this version
+VERSION_NUM=${VERSION#v}  # Remove 'v' prefix
+if ! grep -q "### $VERSION\|### v$VERSION_NUM" README.md 2>/dev/null; then
+    echo -e "${YELLOW}Warning: README.md changelog does not contain entry for $VERSION${NC}"
+    echo ""
+    echo "Add a changelog entry like:"
+    echo "  ### $VERSION"
+    echo "  - Your changes here"
+    echo ""
+    read -p "Continue without changelog update? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Aborted. Update README.md changelog and commit, then re-run."
+        exit 1
+    fi
+fi
+
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 if [ "$BRANCH" != "main" ]; then
     echo -e "${YELLOW}Warning: Not on main branch (on $BRANCH)${NC}"
@@ -92,7 +109,8 @@ echo "---"
 echo "$FULL_MESSAGE"
 echo "---"
 echo ""
-read -p "Proceed with release? (y/N) " -n 1 -r
+echo -e "${YELLOW}>>> Proceed with release? (y/N) ${NC}"
+read -n 1 -r REPLY </dev/tty
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     echo "Aborted."

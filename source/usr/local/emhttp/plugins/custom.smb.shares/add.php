@@ -31,8 +31,8 @@ try {
         'fruit' => $_POST['fruit'] ?? 'no',
         'create_mask' => $_POST['create_mask'] ?? '0664',
         'directory_mask' => $_POST['directory_mask'] ?? '0775',
-        'force_user' => $_POST['force_user'] ?? 'nobody',
-        'force_group' => $_POST['force_group'] ?? 'users',
+        'force_user' => $_POST['force_user'] ?? '',
+        'force_group' => $_POST['force_group'] ?? '',
         'hide_dot_files' => $_POST['hide_dot_files'] ?? 'yes'
     ]);
 

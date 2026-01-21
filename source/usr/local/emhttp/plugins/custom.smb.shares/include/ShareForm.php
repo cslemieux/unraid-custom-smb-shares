@@ -277,13 +277,30 @@ _(Enhanced macOS support)_:
 
 > Permissions for newly created directories. Default: Owner full, Group read/execute, Others read/execute (0775).
 
+<?php
+$forceUsers = getSystemUsers(true); // Include system users like nobody
+$forceGroups = getSystemGroups();
+$currentForceUser = $share['force_user'] ?? '';
+$currentForceGroup = $share['force_group'] ?? '';
+?>
+
 _(Force user)_:
-: <input type="text" name="force_user" value="<?=htmlspecialchars($share['force_user'] ?? '')?>" placeholder="_(e.g. nobody)_">
+: <select name="force_user">
+<option value="">_(None - use connecting user)_</option>
+<?php foreach ($forceUsers as $user) : ?>
+    <?=mk_option($currentForceUser, $user['name'], $user['name'])?>
+<?php endforeach; ?>
+</select>
 
 > Force all file operations as this user. Leave empty to use connecting user's identity.
 
 _(Force group)_:
-: <input type="text" name="force_group" value="<?=htmlspecialchars($share['force_group'] ?? '')?>" placeholder="_(e.g. users)_">
+: <select name="force_group">
+<option value="">_(None - use connecting user's group)_</option>
+<?php foreach ($forceGroups as $group) : ?>
+    <?=mk_option($currentForceGroup, $group['name'], $group['name'])?>
+<?php endforeach; ?>
+</select>
 
 > Force all file operations to use this group. Leave empty to use connecting user's group.
 
@@ -481,6 +498,25 @@ function updatePermissionMask(target) {
 
 // Initialize on page load
 $(function() {
+    // Check if share has non-default advanced settings
+    var hasAdvancedSettings = <?php
+        $hasAdvanced = false;
+    if (!$isNew && !empty($share)) {
+        // Check for non-default advanced settings
+        $hasAdvanced =
+            ($share['case_sensitive'] ?? 'auto') !== 'auto' ||
+            ($share['hide_dot_files'] ?? 'yes') !== 'yes' ||
+            ($share['fruit'] ?? 'no') !== 'no' ||
+            ($share['create_mask'] ?? '0664') !== '0664' ||
+            ($share['directory_mask'] ?? '0775') !== '0775' ||
+            !empty($share['force_user'] ?? '') ||
+            !empty($share['force_group'] ?? '') ||
+            !empty($share['hosts_allow'] ?? '') ||
+            !empty($share['hosts_deny'] ?? '');
+    }
+        echo $hasAdvanced ? 'true' : 'false';
+    ?>;
+
     // Add Advanced View toggle to first title bar only (like Docker plugin)
     var ctrl = "<span class='status' style='float:right;margin-right:10px;'><input type='checkbox' class='advancedview'></span>";
     $('div.title:first').append(ctrl);
@@ -493,6 +529,13 @@ $(function() {
             $('.advanced').slideUp('fast');
         }
     });
+
+    // Auto-expand advanced view if share has advanced settings configured
+    if (hasAdvancedSettings) {
+        $('.advancedview').prop('checked', true).trigger('change');
+        // Also update the switchButton visual state
+        $('.advancedview').switchButton({checked: true});
+    }
     
     // User access dropdowns are now server-side rendered, no initialization needed
     

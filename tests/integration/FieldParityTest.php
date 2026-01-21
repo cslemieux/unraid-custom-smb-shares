@@ -116,9 +116,10 @@ class FieldParityTest extends TestCase
 
         $config = generateSambaConfig([$share]);
 
-        // Verify defaults are applied
-        $this->assertStringContainsString('force user = nobody', $config);
-        $this->assertStringContainsString('force group = users', $config);
+        // force_user and force_group should NOT appear when not set (empty default)
+        $this->assertStringNotContainsString('force user', $config);
+        $this->assertStringNotContainsString('force group', $config);
+        // Other defaults should still apply
         $this->assertStringContainsString('create mask = 0664', $config);
         $this->assertStringContainsString('directory mask = 0775', $config);
         $this->assertStringContainsString('hide dot files = yes', $config);

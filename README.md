@@ -199,6 +199,12 @@ composer test:e2e
 
 ## Changelog
 
+### v2026.01.20
+- Force user/group fields changed from text inputs to dropdowns
+- Only valid system users/groups are selectable (prevents config errors)
+- Default is now "None" (use connecting user) instead of hardcoded nobody/users
+- Auto-expand Advanced View when editing shares with advanced settings configured
+
 ### v2026.01.19
 - Fix user access permissions not saving correctly
 - Add comprehensive security settings test pyramid (57 new tests)

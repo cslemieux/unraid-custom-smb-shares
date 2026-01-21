@@ -5,6 +5,8 @@ declare(strict_types=1);
 // phpcs:disable PSR1.Classes.ClassDeclaration.MissingNamespace
 // Unraid plugins don't use namespaces - they're loaded directly by the WebGUI
 
+require_once __DIR__ . '/ConfigRegistry.php';
+
 /**
  * Centralized test mode detection for the Custom SMB Shares plugin.
  *
@@ -58,14 +60,21 @@ class TestModeDetector
             return self::$harnessRoot;
         }
 
-        if (!self::isTestMode() || !defined('CONFIG_BASE')) {
+        if (!self::isTestMode()) {
+            self::$harnessRoot = '';
+            return '';
+        }
+
+        // Use ConfigRegistry to get the config base (supports test overrides)
+        $configBase = ConfigRegistry::getConfigBase();
+        if (empty($configBase)) {
             self::$harnessRoot = '';
             return '';
         }
 
         // CONFIG_BASE: /tmp/xxx/usr/local/boot/config or /private/tmp/xxx/usr/local/boot/config
         // Go up 4 levels: config -> boot -> local -> usr -> harness root
-        self::$harnessRoot = dirname(dirname(dirname(dirname(CONFIG_BASE))));
+        self::$harnessRoot = dirname(dirname(dirname(dirname($configBase))));
         return self::$harnessRoot;
     }
 
